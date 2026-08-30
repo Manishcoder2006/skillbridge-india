@@ -129,28 +129,28 @@ export const SkillAssessment = () => {
                 {result.passed ? <Award size={36} /> : <AlertTriangle size={36} />}
               </div>
 
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                 {result.passed ? 'Assessment Passed!' : 'Assessment Incomplete'}
               </h2>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                 {result.assessment_title}
               </p>
 
               <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', margin: '1.5rem 0' }}>
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Score</div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ffffff' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Score</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                     {result.score} / {result.total_marks}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Percentage</div>
-                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: result.passed ? '#14b8a6' : '#f59e0b' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Percentage</div>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 800, color: result.passed ? '#0d9488' : '#b45309' }}>
                     {result.percentage}%
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Status</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Status</div>
                   <div style={{ marginTop: '0.25rem' }}>
                     <Badge variant={result.passed ? 'success' : 'danger'}>
                       {result.passed ? 'VERIFIED' : 'NEEDS PRACTICE'}
@@ -161,28 +161,28 @@ export const SkillAssessment = () => {
 
               {/* Diagnostic breakdown */}
               <div className="grid-responsive grid-cols-2" style={{ gap: '1rem', textAlign: 'left', marginTop: '1.5rem' }}>
-                <div style={{ padding: '1rem', background: 'rgba(20, 184, 166, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(20, 184, 166, 0.2)' }}>
-                  <div style={{ fontWeight: 700, color: '#14b8a6', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: 'var(--radius-md)', border: '1px solid #bbf7d0' }}>
+                  <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <CheckCircle2 size={16} /> Demonstrated Strengths
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {result.strengths?.length > 0 ? (
                       result.strengths.map((s, i) => <Badge key={i} variant="success">{s}</Badge>)
                     ) : (
-                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Review fundamental topics</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Review fundamental topics</span>
                     )}
                   </div>
                 </div>
 
-                <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                  <div style={{ fontWeight: 700, color: '#f87171', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <div style={{ padding: '1rem', background: '#fef2f2', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }}>
+                  <div style={{ fontWeight: 700, color: '#b91c1c', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <AlertTriangle size={16} /> Targeted Skill Gaps
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {result.skill_gaps?.length > 0 ? (
                       result.skill_gaps.map((g, i) => <Badge key={i} variant="danger">{g}</Badge>)
                     ) : (
-                      <span style={{ fontSize: '0.8rem', color: '#4ade80' }}>All tested topics verified!</span>
+                      <span style={{ fontSize: '0.8rem', color: '#16a34a' }}>All tested topics verified!</span>
                     )}
                   </div>
                 </div>
@@ -204,10 +204,10 @@ export const SkillAssessment = () => {
         {/* Quiz Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span style={{ fontSize: '0.8rem', color: '#14b8a6', fontWeight: 700, textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.8rem', color: '#0d9488', fontWeight: 700, textTransform: 'uppercase' }}>
               {activeAssessment.category}
             </span>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               {activeAssessment.title}
             </h2>
           </div>
@@ -218,15 +218,15 @@ export const SkillAssessment = () => {
 
         {/* Progress Bar */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.35rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
             <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
             <span>{answeredCount} of {questions.length} Answered</span>
           </div>
-          <div style={{ width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', height: '6px' }}>
+          <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '4px', height: '6px' }}>
             <div
               style={{
                 width: `${((currentQuestionIdx + 1) / questions.length) * 100}%`,
-                background: '#14b8a6',
+                background: '#0d9488',
                 height: '100%',
                 borderRadius: '4px',
               }}
@@ -240,10 +240,10 @@ export const SkillAssessment = () => {
             <div style={{ padding: '0.5rem 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                 <Badge variant="primary">{currentQ.skill_tag}</Badge>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>1 Point</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>1 Point</span>
               </div>
 
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '1.5rem' }}>
                 {currentQ.question_text}
               </h3>
 
@@ -258,15 +258,15 @@ export const SkillAssessment = () => {
                       style={{
                         padding: '1rem 1.25rem',
                         borderRadius: 'var(--radius-md)',
-                        background: isSelected ? 'rgba(20, 184, 166, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isSelected ? '2px solid #14b8a6' : '1px solid rgba(255, 255, 255, 0.08)',
-                        color: isSelected ? '#ffffff' : '#cbd5e1',
+                        background: isSelected ? '#ccfbf1' : '#f8fafc',
+                        border: isSelected ? '2px solid #0d9488' : '1px solid #e2e8f0',
+                        color: isSelected ? '#0f766e' : 'var(--text-primary)',
                         textAlign: 'left',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.75rem',
-                        fontWeight: isSelected ? 600 : 400,
+                        fontWeight: isSelected ? 700 : 500,
                         transition: 'all 0.15s ease',
                       }}
                     >
@@ -275,14 +275,14 @@ export const SkillAssessment = () => {
                           width: '24px',
                           height: '24px',
                           borderRadius: '50%',
-                          border: isSelected ? '2px solid #14b8a6' : '1px solid #64748b',
-                          background: isSelected ? '#14b8a6' : 'transparent',
+                          border: isSelected ? '2px solid #0d9488' : '1px solid #94a3b8',
+                          background: isSelected ? '#0d9488' : '#ffffff',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          color: '#ffffff',
+                          color: isSelected ? '#ffffff' : '#475569',
                         }}
                       >
                         {String.fromCharCode(65 + optIdx)}
@@ -294,7 +294,7 @@ export const SkillAssessment = () => {
               </div>
 
               {/* Navigation buttons */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                 <Button
                   onClick={() => setCurrentQuestionIdx(Math.max(0, currentQuestionIdx - 1))}
                   disabled={currentQuestionIdx === 0}
@@ -332,8 +332,8 @@ export const SkillAssessment = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>Skill Assessments</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Skill Assessments</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
           Evaluate your technical proficiency against National Occupational Standards (NOS). Verified scores unlock high-matching internship and job recommendations.
         </p>
       </div>
@@ -344,18 +344,18 @@ export const SkillAssessment = () => {
           <Card key={ass.id}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
               <Badge variant="primary">{ass.category}</Badge>
-              <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                 <Clock size={14} /> {ass.duration_minutes} Mins
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>{ass.title}</h3>
-            <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.5rem 0 1rem', lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ass.title}</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.5rem 0 1rem', lineHeight: 1.5 }}>
               {ass.description}
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize: '0.8rem', color: '#cbd5e1' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 {ass.total_questions} Questions • Pass: {ass.passing_percentage}%
               </span>
               <Button onClick={() => startAssessment(ass.id)} variant="primary" size="sm">
@@ -369,7 +369,7 @@ export const SkillAssessment = () => {
       {/* Past Assessment Attempts History */}
       <Card title="Completed Assessment Attempts" subtitle="Verified scores recorded in your talent profile">
         {attempts.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             No assessments completed yet. Take an assessment above to verify your skills.
           </div>
         ) : (
@@ -379,9 +379,9 @@ export const SkillAssessment = () => {
                 key={att.id}
                 style={{
                   padding: '1rem',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: '#f8fafc',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid #e2e8f0',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -390,16 +390,16 @@ export const SkillAssessment = () => {
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                     {att.assessment_title}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                     Completed on {new Date(att.completed_at).toLocaleDateString()}
                   </div>
                   <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Strengths:</span>
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Strengths:</span>
                     {att.strengths?.map((s, i) => (
-                      <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(20,184,166,0.15)', color: '#14b8a6', padding: '2px 6px', borderRadius: '4px' }}>
+                      <span key={i} style={{ fontSize: '0.75rem', background: '#ccfbf1', color: '#0f766e', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
                         ✓ {s}
                       </span>
                     ))}
@@ -408,10 +408,10 @@ export const SkillAssessment = () => {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: att.passed ? '#14b8a6' : '#f59e0b' }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: att.passed ? '#0d9488' : '#b45309' }}>
                       {att.percentage}%
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       {att.score} / {att.total_marks} Marks
                     </div>
                   </div>

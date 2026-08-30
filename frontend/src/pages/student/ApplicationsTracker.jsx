@@ -69,8 +69,8 @@ export const ApplicationsTracker = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>Application Tracker</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Application Tracker</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
             Monitor real-time status, recruitment stages, and recruiter feedback on your active applications.
           </p>
         </div>
@@ -88,18 +88,18 @@ export const ApplicationsTracker = () => {
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: 'rgba(255,255,255,0.05)',
+                background: '#f1f5f9',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 1rem',
-                color: '#94a3b8',
+                color: '#64748b',
               }}
             >
               <FileText size={32} />
             </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>No Applications Submitted Yet</h3>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', maxWidth: '400px', margin: '0.5rem auto 1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>No Applications Submitted Yet</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '400px', margin: '0.5rem auto 1.5rem' }}>
               Explore verified internship and graduate engineering roles matching your validated skill matrix.
             </p>
             <Link to="/dashboard/student/opportunities" className="btn btn-primary btn-sm">
@@ -112,7 +112,7 @@ export const ApplicationsTracker = () => {
           <div style={{ overflowX: 'auto' }}>
             <table className="table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700 }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Position / Role</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Company</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Type</th>
@@ -126,16 +126,16 @@ export const ApplicationsTracker = () => {
                   <tr
                     key={app.id}
                     style={{
-                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      borderBottom: '1px solid var(--border-color)',
                       transition: 'background 0.15s ease',
                     }}
                   >
-                    <td style={{ padding: '1rem', fontWeight: 700, color: '#ffffff', fontSize: '0.9rem' }}>
+                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
                       {app.title}
                     </td>
-                    <td style={{ padding: '1rem', color: '#cbd5e1', fontSize: '0.85rem' }}>
+                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <Building2 size={14} color="#14b8a6" /> {app.company_name}
+                        <Building2 size={14} color="#0d9488" /> {app.company_name}
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -143,7 +143,7 @@ export const ApplicationsTracker = () => {
                         {app.type}
                       </Badge>
                     </td>
-                    <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
+                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                       {new Date(app.applied_at).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '1rem' }}>
@@ -174,7 +174,7 @@ export const ApplicationsTracker = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'rgba(15, 23, 42, 0.6)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -185,9 +185,10 @@ export const ApplicationsTracker = () => {
         >
           <div
             style={{
-              background: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: '#ffffff',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-xl)',
               maxWidth: '550px',
               width: '100%',
               padding: '1.75rem',
@@ -201,36 +202,36 @@ export const ApplicationsTracker = () => {
                 <Badge variant={getStatusBadgeVariant(selectedApp.status)}>
                   STATUS: {selectedApp.status?.replace('_', ' ').toUpperCase()}
                 </Badge>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginTop: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
                   {selectedApp.title}
                 </h2>
-                <div style={{ color: '#14b8a6', fontWeight: 600, fontSize: '0.9rem' }}>
+                <div style={{ color: '#0d9488', fontWeight: 700, fontSize: '0.9rem' }}>
                   {selectedApp.company_name}
                 </div>
               </div>
               <button
                 onClick={() => setSelectedApp(null)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
               >
                 <X size={22} />
               </button>
             </div>
 
-            <div style={{ padding: '0.875rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Application Metadata</div>
-              <div style={{ fontSize: '0.85rem', color: '#ffffff' }}>
+            <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Application Metadata</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                 <strong>Applied On:</strong> {new Date(selectedApp.applied_at).toLocaleString()}
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#ffffff' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
                 <strong>Location:</strong> {selectedApp.location}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
                 Submission Notes & Cover Summary
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8', background: 'rgba(255,255,255,0.02)', padding: '0.75rem', borderRadius: '4px' }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.75rem', borderRadius: '4px' }}>
                 {selectedApp.notes || 'Standard verified profile submission.'}
               </p>
             </div>

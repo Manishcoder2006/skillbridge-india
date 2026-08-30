@@ -120,45 +120,45 @@ export const StudentAnalytics = () => {
         <div
           style={{
             padding: '1.5rem',
-            background: 'linear-gradient(180deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
-            border: '1px solid rgba(129, 140, 248, 0.3)',
+            background: 'linear-gradient(180deg, #ede9fe 0%, #f8fafc 100%)',
+            border: '1px solid #c7d2fe',
             borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#818cf8', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#4f46e5', letterSpacing: '0.05em' }}>
                 AI Academic Diagnostic Report • {aiInsights.ai_meta?.model_used}
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginTop: '0.2rem' }}>
-                Cohort Placement Readiness: <span style={{ color: '#10b981' }}>{aiInsights.mean_readiness_score}% Mean Score</span>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
+                Cohort Placement Readiness: <span style={{ color: '#0d9488' }}>{aiInsights.mean_readiness_score}% Mean Score</span>
               </h2>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               Evaluated {aiInsights.total_students_evaluated} Authorized Students
             </div>
           </div>
 
           <div className="grid-responsive grid-cols-2" style={{ gap: '1rem' }}>
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ background: '#fffbeb', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #fde68a' }}>
+              <div style={{ fontWeight: 700, color: '#b45309', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <AlertTriangle size={14} /> Systemic Cohort Skill Gaps
               </div>
-              <ul style={{ paddingLeft: '1.2rem', color: '#e2e8f0', fontSize: '0.8rem', lineHeight: '1.6' }}>
+              <ul style={{ paddingLeft: '1.2rem', color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.6' }}>
                 {aiInsights.critical_cohort_skill_gaps?.map((gap, idx) => (
                   <li key={idx}>
-                    <strong style={{ color: '#ffffff' }}>{gap.skill}</strong> — {gap.affected_percentage}% of students affected ({gap.severity} severity)
+                    <strong style={{ color: 'var(--text-primary)' }}>{gap.skill}</strong> — {gap.affected_percentage}% of students affected ({gap.severity} severity)
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontWeight: 700, color: '#34d399', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Brain size={14} /> Recommended Pedagogical Interventions
               </div>
-              <ul style={{ paddingLeft: '1.2rem', color: '#cbd5e1', fontSize: '0.8rem', lineHeight: '1.6' }}>
+              <ul style={{ paddingLeft: '1.2rem', color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.6' }}>
                 {aiInsights.pedagogical_interventions?.map((rec, idx) => (
                   <li key={idx}>{rec}</li>
                 ))}

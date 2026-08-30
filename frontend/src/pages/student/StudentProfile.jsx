@@ -167,9 +167,9 @@ export const StudentProfile = () => {
             {profile?.full_name?.charAt(0) || 'S'}
           </div>
           <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>{profile?.full_name}</h1>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{profile?.full_name}</h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{profile?.email}</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{profile?.email}</span>
               <Badge variant="success">
                 <CheckCircle2 size={12} style={{ marginRight: '4px' }} /> Verified Student
               </Badge>
@@ -187,20 +187,20 @@ export const StudentProfile = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <Card title="Institutional Affiliation" subtitle="Institutional and tenancy records">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ padding: '0.875rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <Building2 size={14} /> Institution
                 </div>
-                <div style={{ fontWeight: 700, color: '#ffffff', marginTop: '0.25rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
                   {profile?.institution_name || 'IIT Delhi'}
                 </div>
               </div>
 
-              <div style={{ padding: '0.875rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   <GraduationCap size={14} /> Department
                 </div>
-                <div style={{ fontWeight: 700, color: '#ffffff', marginTop: '0.25rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
                   {profile?.department_name || 'Computer Science & Engineering'}
                 </div>
               </div>
@@ -208,11 +208,11 @@ export const StudentProfile = () => {
               <div
                 style={{
                   padding: '0.75rem',
-                  background: 'rgba(245, 158, 11, 0.08)',
+                  background: '#fffbeb',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                  border: '1px solid #fde68a',
                   fontSize: '0.75rem',
-                  color: '#fbbf24',
+                  color: '#b45309',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
@@ -285,20 +285,20 @@ export const StudentProfile = () => {
                   key={idx}
                   style={{
                     padding: '1rem',
-                    background: 'rgba(255,255,255,0.02)',
+                    background: '#f8fafc',
                     borderRadius: 'var(--radius-md)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    border: '1px solid #e2e8f0',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>{proj.title}</div>
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.25rem' }}>{proj.description}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{proj.title}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{proj.description}</div>
                     <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                       {proj.technologies?.map((tech, i) => (
-                        <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(20,184,166,0.15)', color: '#14b8a6', padding: '2px 6px', borderRadius: '4px' }}>
+                        <span key={i} style={{ fontSize: '0.75rem', background: '#ccfbf1', color: '#0f766e', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
                           {tech}
                         </span>
                       ))}
@@ -306,7 +306,7 @@ export const StudentProfile = () => {
                   </div>
                   <button
                     onClick={() => removeProject(idx)}
-                    style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -314,8 +314,8 @@ export const StudentProfile = () => {
               ))}
 
               {/* Add Project inline form */}
-              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.01)', borderRadius: 'var(--radius-md)', border: '1px dashed rgba(255,255,255,0.15)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#14b8a6', marginBottom: '0.75rem' }}>Add New Project</div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px dashed #cbd5e1' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0d9488', marginBottom: '0.75rem' }}>Add New Project</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <Input placeholder="Project Title" value={newProject.title} onChange={(e) => setNewProject({ ...newProject, title: e.target.value })} />
                   <Input placeholder="Description & Impact" value={newProject.description} onChange={(e) => setNewProject({ ...newProject, description: e.target.value })} />
@@ -333,12 +333,12 @@ export const StudentProfile = () => {
             <Card title="Certifications">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {formData.certifications.map((c, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0' }}>
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff' }}>{c.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{c.issuer} ({c.issue_year})</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.issuer} ({c.issue_year})</div>
                     </div>
-                    <button onClick={() => removeCertification(i)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}>
+                    <button onClick={() => removeCertification(i)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -349,14 +349,14 @@ export const StudentProfile = () => {
                     placeholder="Certificate Name"
                     value={newCert.name}
                     onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
+                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
                   />
                   <input
                     type="text"
                     placeholder="Issuer"
                     value={newCert.issuer}
                     onChange={(e) => setNewCert({ ...newCert, issuer: e.target.value })}
-                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
+                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
                   />
                   <Button type="button" variant="secondary" size="sm" onClick={addCertification}>
                     <Plus size={12} />
@@ -368,12 +368,12 @@ export const StudentProfile = () => {
             <Card title="Achievements & Honors">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {formData.achievements.map((a, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0' }}>
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff' }}>{a.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{a.organization} ({a.year})</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{a.organization} ({a.year})</div>
                     </div>
-                    <button onClick={() => removeAchievement(i)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}>
+                    <button onClick={() => removeAchievement(i)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -384,14 +384,14 @@ export const StudentProfile = () => {
                     placeholder="Achievement Title"
                     value={newAchieve.title}
                     onChange={(e) => setNewAchieve({ ...newAchieve, title: e.target.value })}
-                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
+                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
                   />
                   <input
                     type="text"
                     placeholder="Org"
                     value={newAchieve.organization}
                     onChange={(e) => setNewAchieve({ ...newAchieve, organization: e.target.value })}
-                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', color: '#fff', fontSize: '0.8rem' }}
+                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
                   />
                   <Button type="button" variant="secondary" size="sm" onClick={addAchievement}>
                     <Plus size={12} />

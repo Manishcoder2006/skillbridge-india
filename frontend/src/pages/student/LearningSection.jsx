@@ -86,8 +86,8 @@ export const LearningSection = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>Curated Learning Resources</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Curated Learning Resources</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
           Discover official government learning resources (SWAYAM, NPTEL, AICTE NEAT) and industry tutorials to bridge your skill gaps.
         </p>
       </div>
@@ -114,9 +114,9 @@ export const LearningSection = () => {
                 fontSize: '0.8rem',
                 fontWeight: 600,
                 border: '1px solid',
-                borderColor: selectedCategory === cat ? '#14b8a6' : 'rgba(255,255,255,0.1)',
-                background: selectedCategory === cat ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.02)',
-                color: selectedCategory === cat ? '#14b8a6' : '#94a3b8',
+                borderColor: selectedCategory === cat ? '#0d9488' : '#e2e8f0',
+                background: selectedCategory === cat ? '#ccfbf1' : '#ffffff',
+                color: selectedCategory === cat ? '#0f766e' : '#475569',
                 cursor: 'pointer',
                 textTransform: 'capitalize',
                 transition: 'all 0.15s ease',
@@ -137,17 +137,17 @@ export const LearningSection = () => {
                 {getResourceIcon(res.resource_type)}
                 <span style={{ textTransform: 'capitalize' }}>{res.resource_type}</span>
               </Badge>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600 }}>
-                <Star size={13} fill="#f59e0b" /> {res.rating}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#d97706', fontSize: '0.8rem', fontWeight: 700 }}>
+                <Star size={13} fill="#d97706" /> {res.rating}
               </div>
             </div>
 
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff', minHeight: '44px', lineHeight: 1.4 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', minHeight: '44px', lineHeight: 1.4 }}>
               {res.title}
             </h3>
 
-            <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-              Provider: <strong style={{ color: '#cbd5e1' }}>{res.provider}</strong>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+              Provider: <strong style={{ color: 'var(--text-primary)' }}>{res.provider}</strong>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
@@ -157,15 +157,15 @@ export const LearningSection = () => {
               <span>•</span>
               <span style={{ textTransform: 'capitalize' }}>{res.level}</span>
               <span>•</span>
-              <span style={{ color: '#4ade80' }}>Free Access</span>
+              <span style={{ color: '#16a34a', fontWeight: 600 }}>Free Access</span>
             </div>
 
-            <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: '1.25rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <a
                 href={res.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ fontSize: '0.8rem', color: '#14b8a6', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                style={{ fontSize: '0.8rem', color: '#0d9488', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
               >
                 Open Resource <ExternalLink size={12} />
               </a>

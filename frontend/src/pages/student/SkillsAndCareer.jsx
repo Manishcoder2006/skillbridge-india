@@ -119,8 +119,8 @@ export const SkillsAndCareer = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>Skills & Career Pathways</h1>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Skills & Career Pathways</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
             Map your verified competencies against industry benchmarks and analyze skill gaps with Google Gemini & Grok.
           </p>
         </div>
@@ -151,34 +151,34 @@ export const SkillsAndCareer = () => {
         <div
           style={{
             padding: '1.5rem',
-            background: 'linear-gradient(180deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 23, 42, 0.6) 100%)',
-            border: '1px solid rgba(129, 140, 248, 0.3)',
+            background: 'linear-gradient(180deg, #ede9fe 0%, #f8fafc 100%)',
+            border: '1px solid #c7d2fe',
             borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#818cf8', letterSpacing: '0.05em' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#4f46e5', letterSpacing: '0.05em' }}>
                 AI Diagnostic Report • {aiGapAnalysis.ai_meta?.model_used}
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginTop: '0.2rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
                 Target Role: {aiGapAnalysis.target_role}
               </h2>
             </div>
-            <div style={{ padding: '0.5rem 1rem', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
-              <div style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 700 }}>Readiness Score</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{aiGapAnalysis.readiness_percentage}%</div>
+            <div style={{ padding: '0.5rem 1rem', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 'var(--radius-md)', textAlign: 'right' }}>
+              <div style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 700 }}>Readiness Score</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#065f46' }}>{aiGapAnalysis.readiness_percentage}%</div>
             </div>
           </div>
 
           <div className="grid-responsive grid-cols-2" style={{ gap: '1rem', marginTop: '1rem' }}>
             {/* Strengths */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontWeight: 700, color: '#34d399', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <CheckCircle size={14} /> Confirmed Strengths
               </div>
-              <ul style={{ paddingLeft: '1.2rem', color: '#e2e8f0', fontSize: '0.8rem', lineHeight: '1.6' }}>
+              <ul style={{ paddingLeft: '1.2rem', color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.6' }}>
                 {aiGapAnalysis.strengths?.map((st, idx) => (
                   <li key={idx}>{st}</li>
                 ))}
@@ -186,15 +186,15 @@ export const SkillsAndCareer = () => {
             </div>
 
             {/* Gaps */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontWeight: 700, color: '#f59e0b', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div style={{ background: '#fffbeb', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #fde68a' }}>
+              <div style={{ fontWeight: 700, color: '#b45309', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Target size={14} /> Priority Skill Gaps
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {aiGapAnalysis.identified_gaps?.map((gap, idx) => (
-                  <div key={idx} style={{ fontSize: '0.8rem', color: '#cbd5e1', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
-                    <strong style={{ color: '#ffffff' }}>{gap.skill_name}</strong> ({gap.gap_severity} Gap)
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{gap.remediation_hint}</div>
+                  <div key={idx} style={{ fontSize: '0.8rem', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.4rem' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>{gap.skill_name}</strong> ({gap.gap_severity} Gap)
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{gap.remediation_hint}</div>
                   </div>
                 ))}
               </div>
@@ -211,15 +211,15 @@ export const SkillsAndCareer = () => {
               key={idx}
               style={{
                 padding: '1.25rem',
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: '#f8fafc',
                 borderRadius: 'var(--radius-md)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
+                border: '1px solid #e2e8f0',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>{path.role_name}</span>
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{path.role_name}</span>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                     {path.acquired_skills.length} of {path.required_skills.length} Required Skills Verified
                   </div>
                 </div>
@@ -234,11 +234,11 @@ export const SkillsAndCareer = () => {
               </div>
 
               {/* Progress Bar */}
-              <div style={{ width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', height: '8px', marginBottom: '1rem' }}>
+              <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '4px', height: '8px', marginBottom: '1rem' }}>
                 <div
                   style={{
                     width: `${path.match_percentage}%`,
-                    background: path.match_percentage >= 70 ? 'linear-gradient(90deg, #14b8a6, #0d9488)' : 'linear-gradient(90deg, #f59e0b, #d97706)',
+                    background: path.match_percentage >= 70 ? 'linear-gradient(90deg, #0d9488, #0f766e)' : 'linear-gradient(90deg, #d97706, #b45309)',
                     height: '100%',
                     borderRadius: '4px',
                   }}
@@ -248,12 +248,12 @@ export const SkillsAndCareer = () => {
               {/* Acquired vs Missing Badges */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <div style={{ flex: 1, minWidth: '240px' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#14b8a6', fontWeight: 700, marginBottom: '0.35rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#0f766e', fontWeight: 700, marginBottom: '0.35rem' }}>
                     ACQUIRED COMPETENCIES ({path.acquired_skills.length})
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                     {path.acquired_skills.map((s, i) => (
-                      <span key={i} style={{ fontSize: '0.75rem', background: 'rgba(20,184,166,0.15)', color: '#14b8a6', padding: '3px 8px', borderRadius: '4px' }}>
+                      <span key={i} style={{ fontSize: '0.75rem', background: '#ccfbf1', color: '#0f766e', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
                         ✓ {s}
                       </span>
                     ))}
@@ -262,12 +262,12 @@ export const SkillsAndCareer = () => {
 
                 {path.missing_skills.length > 0 && (
                   <div style={{ flex: 1, minWidth: '240px' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#f87171', fontWeight: 700, marginBottom: '0.35rem' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#b91c1c', fontWeight: 700, marginBottom: '0.35rem' }}>
                       RECOMMENDED UPSKILLING GAPS ({path.missing_skills.length})
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                       {path.missing_skills.map((s, i) => (
-                        <span key={i} style={{ fontSize: '0.75rem', background: 'rgba(239,68,68,0.15)', color: '#f87171', padding: '3px 8px', borderRadius: '4px' }}>
+                        <span key={i} style={{ fontSize: '0.75rem', background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '4px', fontWeight: 500 }}>
                           + {s}
                         </span>
                       ))}
@@ -331,17 +331,17 @@ export const SkillsAndCareer = () => {
                 key={s.id}
                 style={{
                   padding: '0.75rem 1rem',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: '#f8fafc',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid #e2e8f0',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.9rem' }}>{s.skill_name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{s.skill_name}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
                     Level: {s.proficiency_level}
                   </div>
                 </div>
@@ -349,7 +349,7 @@ export const SkillsAndCareer = () => {
                   {s.is_verified && <Badge variant="success">Verified</Badge>}
                   <button
                     onClick={() => handleDeleteSkill(s.id, s.skill_name)}
-                    style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -366,17 +366,17 @@ export const SkillsAndCareer = () => {
                 key={s.id}
                 style={{
                   padding: '0.75rem 1rem',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: '#f8fafc',
                   borderRadius: 'var(--radius-md)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid #e2e8f0',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
                 <div>
-                  <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.9rem' }}>{s.skill_name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.9rem' }}>{s.skill_name}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
                     Level: {s.proficiency_level}
                   </div>
                 </div>
@@ -384,7 +384,7 @@ export const SkillsAndCareer = () => {
                   {s.is_verified && <Badge variant="success">Verified</Badge>}
                   <button
                     onClick={() => handleDeleteSkill(s.id, s.skill_name)}
-                    style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
+                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
                   >
                     <Trash2 size={14} />
                   </button>

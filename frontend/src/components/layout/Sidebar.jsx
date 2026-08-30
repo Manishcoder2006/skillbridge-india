@@ -100,7 +100,7 @@ export const Sidebar = ({ isMobileOpen, closeMobileMenu }) => {
       </div>
 
       <nav className="sidebar-nav">
-        <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', padding: '0.5rem 0.875rem' }}>
+        <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', padding: '0.5rem 0.875rem' }}>
           {role === 'student'
             ? 'Student Ecosystem'
             : role === 'academician'
@@ -137,7 +137,7 @@ export const Sidebar = ({ isMobileOpen, closeMobileMenu }) => {
             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.full_name || 'User'}
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+            <div style={{ fontSize: '0.75rem', color: '#cbd5e1', textTransform: 'capitalize' }}>
               {role?.replace('_', ' ')}
             </div>
           </div>
@@ -146,7 +146,7 @@ export const Sidebar = ({ isMobileOpen, closeMobileMenu }) => {
         <button
           onClick={logout}
           className="btn btn-secondary btn-sm btn-block"
-          style={{ background: 'rgba(255,255,255,0.06)', color: '#f87171', borderColor: 'transparent' }}
+          style={{ background: 'rgba(255,255,255,0.08)', color: '#fca5a5', borderColor: 'transparent', fontWeight: 600 }}
         >
           <LogOut size={14} />
           <span>Sign Out</span>

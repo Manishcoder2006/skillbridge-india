@@ -94,8 +94,8 @@ export const OpportunitiesSection = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#ffffff' }}>Internships & Job Opportunities</h1>
-        <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Internships & Job Opportunities</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
           Discover verified engineering internships and graduate placement openings directly mapped to your validated skill sets.
         </p>
       </div>
@@ -141,7 +141,7 @@ export const OpportunitiesSection = () => {
       {/* Opportunity Cards List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
             No matching opportunities found with the selected criteria.
           </div>
         ) : (
@@ -156,34 +156,34 @@ export const OpportunitiesSection = () => {
                     <Badge variant="neutral" style={{ textTransform: 'capitalize' }}>
                       {opp.work_mode}
                     </Badge>
-                    <span style={{ fontSize: '0.8rem', color: '#f59e0b', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 700 }}>
                       {opp.stipend_or_salary}
                     </span>
                   </div>
 
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#ffffff' }}>{opp.title}</h3>
-                  <div style={{ fontSize: '0.9rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <Building2 size={14} color="#14b8a6" /> {opp.company_name}
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{opp.title}</h3>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, color: '#0f766e' }}>
+                      <Building2 size={14} color="#0d9488" /> {opp.company_name}
                     </span>
                     <span>•</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <MapPin size={14} color="#94a3b8" /> {opp.location}
+                      <MapPin size={14} color="#64748b" /> {opp.location}
                     </span>
                     <span>•</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#f87171' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#b91c1c', fontWeight: 600 }}>
                       <Calendar size={14} /> Deadline: {opp.application_deadline}
                     </span>
                   </div>
 
-                  <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: '0.75rem 0', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.75rem 0', lineHeight: 1.5 }}>
                     {opp.description}
                   </p>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Required Skills:</span>
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Required Skills:</span>
                     {opp.required_skills?.map((s, i) => (
-                      <span key={i} style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', color: '#cbd5e1', padding: '2px 8px', borderRadius: '4px' }}>
+                      <span key={i} style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
                         {s}
                       </span>
                     ))}
@@ -213,7 +213,7 @@ export const OpportunitiesSection = () => {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
+            background: 'rgba(15, 23, 42, 0.6)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -224,9 +224,10 @@ export const OpportunitiesSection = () => {
         >
           <div
             style={{
-              background: '#0f172a',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: '#ffffff',
+              border: '1px solid var(--border-color)',
               borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--shadow-xl)',
               maxWidth: '650px',
               width: '100%',
               maxHeight: '90vh',
@@ -242,39 +243,39 @@ export const OpportunitiesSection = () => {
                 <Badge variant={selectedOpp.type === 'internship' ? 'primary' : 'success'}>
                   {selectedOpp.type.toUpperCase()}
                 </Badge>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff', marginTop: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
                   {selectedOpp.title}
                 </h2>
-                <div style={{ color: '#14b8a6', fontWeight: 600, fontSize: '0.95rem' }}>
+                <div style={{ color: '#0d9488', fontWeight: 700, fontSize: '0.95rem' }}>
                   {selectedOpp.company_name}
                 </div>
               </div>
               <button
                 onClick={() => setSelectedOpp(null)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
               >
                 <X size={22} />
               </button>
             </div>
 
-            <div style={{ padding: '0.875rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Eligibility & Criteria</div>
-              <div style={{ color: '#ffffff', fontSize: '0.85rem', marginTop: '0.25rem', lineHeight: 1.4 }}>
+            <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Eligibility & Criteria</div>
+              <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem', marginTop: '0.25rem', lineHeight: 1.4 }}>
                 {selectedOpp.eligibility}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
                 Role Description & Scope
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                 {selectedOpp.description}
               </p>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
                 Required Verified Skills
               </div>
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -285,7 +286,7 @@ export const OpportunitiesSection = () => {
             </div>
 
             {selectedOpp.is_applied ? (
-              <div style={{ padding: '1rem', background: 'rgba(20, 184, 166, 0.1)', borderRadius: 'var(--radius-md)', textAlign: 'center', color: '#14b8a6', fontWeight: 700 }}>
+              <div style={{ padding: '1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)', textAlign: 'center', color: '#166534', fontWeight: 700 }}>
                 ✓ You have already applied for this opening. Track status in Applications.
               </div>
             ) : (
