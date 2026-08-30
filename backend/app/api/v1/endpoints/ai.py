@@ -12,6 +12,10 @@ from app.schemas.ai import (
     LearningRecommendationsResponse,
     ResumeSuggestionsRequest,
     ResumeSuggestionsResponse,
+    ResumeBulletImproveRequest,
+    ResumeBulletImproveResponse,
+    ResumeSummaryGenerateRequest,
+    ResumeSummaryGenerateResponse,
     CandidateMatchRequest,
     CandidateMatchResponse,
     CohortInsightsRequest,
@@ -95,12 +99,46 @@ async def get_student_resume_suggestions(
     payload: ResumeSuggestionsRequest,
     current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
 ):
-    """Generate ATS keyword enhancements and quantified bullet point suggestions."""
+    """Generate ATS keyword enhancements, match diagnostic, and quantified bullet point suggestions."""
     user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
     return await ai_orchestrator.get_resume_suggestions(
         user_id=user_id,
         target_role=payload.target_job_title,
-        custom_summary=payload.custom_summary
+        job_description=payload.target_job_description,
+        custom_summary=payload.custom_summary,
+        custom_resume_data=payload.resume_data
+    )
+
+
+@router.post("/student/resume-summary-generate", response_model=ResumeSummaryGenerateResponse)
+async def generate_student_resume_summary(
+    payload: ResumeSummaryGenerateRequest,
+    current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
+):
+    """Generate an authentic, high-impact executive summary based on the candidate's real skills & background."""
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
+    return await ai_orchestrator.generate_resume_summary(
+        user_id=user_id,
+        target_role=payload.target_role,
+        skills=payload.skills,
+        experience_highlights=payload.experience_highlights,
+        education_highlights=payload.education_highlights,
+        tone=payload.tone or "impactful"
+    )
+
+
+@router.post("/student/resume-bullet-improve", response_model=ResumeBulletImproveResponse)
+async def improve_student_resume_bullet(
+    payload: ResumeBulletImproveRequest,
+    current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
+):
+    """Enhance a bullet point using strong action verbs, quantifiable metrics, and ATS keywords."""
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
+    return await ai_orchestrator.improve_resume_bullet(
+        user_id=user_id,
+        bullet_text=payload.bullet_text,
+        target_role=payload.target_role,
+        context_type=payload.context_type or "experience"
     )
 
 

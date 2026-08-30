@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field, EmailStr
 
 # ------------------------------------------------------------------------------
@@ -7,10 +7,18 @@ from pydantic import BaseModel, Field, EmailStr
 class EducationItem(BaseModel):
     institution: str
     degree: str
-    field_of_study: str
-    start_year: int
-    end_year: Optional[int] = None
+    field_of_study: Optional[str] = ""
+    start_year: Optional[Union[int, str]] = None
+    end_year: Optional[Union[int, str]] = None
     grade_or_cgpa: Optional[str] = None
+
+class ExperienceItem(BaseModel):
+    company: str
+    job_title: str
+    employment_type: Optional[str] = "Internship"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    description: Optional[str] = None
 
 class ProjectItem(BaseModel):
     title: str
@@ -21,13 +29,13 @@ class ProjectItem(BaseModel):
 class CertificationItem(BaseModel):
     name: str
     issuer: str
-    issue_year: int
+    issue_year: Optional[Union[int, str]] = None
     credential_url: Optional[str] = None
 
 class AchievementItem(BaseModel):
     title: str
     organization: Optional[str] = None
-    year: int
+    year: Optional[Union[int, str]] = None
     description: Optional[str] = None
 
 class StudentFullProfileResponse(BaseModel):
@@ -186,16 +194,26 @@ class ApplicationResponse(BaseModel):
 # 6. Resume Schemas
 # ------------------------------------------------------------------------------
 class ResumeDataSchema(BaseModel):
-    headline: str = "Aspiring Software & Systems Engineer"
-    summary: str = "Motivated engineering student with hands-on experience in full-stack architecture, API engineering, and cloud platforms."
-    target_role: str = "Full Stack Developer"
-    education: List[EducationItem] = []
+    full_name: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    location: Optional[str] = ""
+    headline: Optional[str] = ""
+    summary: Optional[str] = ""
+    target_role: Optional[str] = "Full Stack Developer"
+    avatar_url: Optional[str] = ""
+    education: List[Dict[str, Any]] = []
     skills: List[str] = []
-    projects: List[ProjectItem] = []
+    skills_by_category: Dict[str, List[str]] = {}
+    projects: List[Dict[str, Any]] = []
     experience: List[Dict[str, Any]] = []
-    certifications: List[CertificationItem] = []
-    achievements: List[AchievementItem] = []
+    certifications: List[Dict[str, Any]] = []
+    achievements: List[Dict[str, Any]] = []
+    positions_of_responsibility: List[Dict[str, Any]] = []
+    extracurricular_activities: List[Dict[str, Any]] = []
+    coursework: List[str] = []
     links: Dict[str, str] = {}
+    formatting: Dict[str, Any] = {}
 
 class ResumeResponse(BaseModel):
     id: str

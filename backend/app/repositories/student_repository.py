@@ -190,76 +190,7 @@ PHASE2_MOCK_STORE = {
             "updated_at": "2026-08-26T09:15:00Z"
         }
     ],
-    "student_resumes": {
-        "u1000000-0000-0000-0000-000000000001": {
-            "headline": "Aspiring Full Stack Engineer & Cloud Developer",
-            "summary": "Passionate Computer Science undergraduate at IIT Delhi with solid foundations in React, FastAPI, PostgreSQL, and scalable API systems. Actively seeking a summer engineering internship.",
-            "target_role": "Full Stack Developer",
-            "education": [
-                {
-                    "institution": "Indian Institute of Technology Delhi",
-                    "degree": "Bachelor of Technology (B.Tech)",
-                    "field_of_study": "Computer Science and Engineering",
-                    "start_year": 2023,
-                    "end_year": 2027,
-                    "grade_or_cgpa": "8.8 / 10"
-                },
-                {
-                    "institution": "Delhi Public School, R.K. Puram",
-                    "degree": "Higher Secondary (CBSE Class XII)",
-                    "field_of_study": "Science (PCM + CS)",
-                    "start_year": 2021,
-                    "end_year": 2023,
-                    "grade_or_cgpa": "96.4%"
-                }
-            ],
-            "skills": ["React", "JavaScript (ES6+)", "Python", "FastAPI", "PostgreSQL", "REST APIs", "Git", "Docker", "Agile Collaboration"],
-            "projects": [
-                {
-                    "title": "SkillBridge Multi-Tenant Academic Portal",
-                    "description": "Engineered a production-ready role-based academic portal with strict Supabase Row Level Security, FastAPI backend, and React UI.",
-                    "technologies": ["React", "FastAPI", "PostgreSQL", "RLS"],
-                    "github_or_demo_url": "https://github.com/example/skillbridge"
-                },
-                {
-                    "title": "Distributed Task Engine",
-                    "description": "Implemented a lightweight asynchronous job processor with persistent task logs and health monitoring.",
-                    "technologies": ["Python", "AsyncIO", "REST APIs"],
-                    "github_or_demo_url": "https://github.com/example/task-engine"
-                }
-            ],
-            "experience": [
-                {
-                    "company": "IITD Center for Computing Services",
-                    "role": "Student Systems Assistant",
-                    "start_date": "Jan 2025",
-                    "end_date": "Present",
-                    "description": "Assisted in maintaining departmental web servers and configuring role access controls for lab infrastructure."
-                }
-            ],
-            "certifications": [
-                {
-                    "name": "NPTEL Certified Full Stack Web Specialist",
-                    "issuer": "NPTEL / IIT Madras",
-                    "issue_year": 2025,
-                    "credential_url": "https://nptel.ac.in/verify"
-                }
-            ],
-            "achievements": [
-                {
-                    "title": "Finalist - Smart India Hackathon 2026",
-                    "organization": "Ministry of Education / AICTE",
-                    "year": 2026,
-                    "description": "Shortlisted for national finals for developing an intelligent Academia-Industry collaboration portal."
-                }
-            ],
-            "links": {
-                "github": "https://github.com/aarav-sharma",
-                "linkedin": "https://linkedin.com/in/aarav-sharma-iitd",
-                "portfolio": "https://aaravsharma.dev"
-            }
-        }
-    },
+    "student_resumes": {},
     "student_extended_profiles": {
         "u1000000-0000-0000-0000-000000000001": {
             "program": "B.Tech Computer Science and Engineering",
@@ -561,22 +492,55 @@ class StudentRepository:
         return [a for a in PHASE2_MOCK_STORE["applications"] if str(a["student_id"]) == str(student_id)]
 
     def get_student_resume(self, student_id: str) -> Dict[str, Any]:
+        profile = self.get_full_student_profile(student_id)
         if student_id in PHASE2_MOCK_STORE["student_resumes"]:
             data = PHASE2_MOCK_STORE["student_resumes"][student_id]
+            # Ensure personal fields are present
+            if not data.get("full_name") and profile.get("full_name"):
+                data["full_name"] = profile.get("full_name")
+            if not data.get("email") and profile.get("email"):
+                data["email"] = profile.get("email")
+            if not data.get("phone") and profile.get("phone"):
+                data["phone"] = profile.get("phone")
+            if not data.get("location") and profile.get("location"):
+                data["location"] = profile.get("location")
+            if "coursework" not in data:
+                data["coursework"] = []
         else:
-            profile = self.get_full_student_profile(student_id)
-            skills = [s["skill_name"] for s in self.get_student_skills(student_id)]
             data = {
-                "headline": f"Aspiring Engineer & {profile.get('program', 'Developer')}",
-                "summary": "Motivated technology student with a strong academic track record and verified full-stack skills.",
+                "full_name": profile.get("full_name", ""),
+                "email": profile.get("email", ""),
+                "phone": profile.get("phone", ""),
+                "location": profile.get("location", ""),
+                "headline": "",
+                "summary": "",
                 "target_role": "Full Stack Developer",
-                "education": profile.get("education", []),
-                "skills": skills or ["React", "Python", "FastAPI", "PostgreSQL"],
-                "projects": profile.get("projects", []),
+                "education": [],
+                "skills": [],
+                "skills_by_category": {
+                    "Programming Languages": [],
+                    "Frameworks & Libraries": [],
+                    "Databases": [],
+                    "Cloud & DevOps": [],
+                    "Tools": [],
+                    "Soft Skills": []
+                },
+                "projects": [],
                 "experience": [],
-                "certifications": profile.get("certifications", []),
-                "achievements": profile.get("achievements", []),
-                "links": {"github": "", "linkedin": "", "portfolio": ""}
+                "certifications": [],
+                "achievements": [],
+                "positions_of_responsibility": [],
+                "extracurricular_activities": [],
+                "coursework": [],
+                "links": {"github": "", "linkedin": "", "portfolio": ""},
+                "formatting": {
+                    "template": "classic",
+                    "font_family": "Inter, sans-serif",
+                    "font_size": "normal",
+                    "line_spacing": "normal",
+                    "section_spacing": "normal",
+                    "margins": "normal"
+                }
             }
             PHASE2_MOCK_STORE["student_resumes"][student_id] = data
 

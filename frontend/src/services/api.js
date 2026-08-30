@@ -363,10 +363,32 @@ export const apiService = {
     return res.data;
   },
 
-  getAIResumeSuggestions: async (targetJobTitle = null, customSummary = null) => {
+  getAIResumeSuggestions: async (targetJobTitle = null, targetJobDescription = null, customSummary = null, resumeData = null) => {
     const res = await apiClient.post('/ai/student/resume-suggestions', {
       target_job_title: targetJobTitle,
+      target_job_description: targetJobDescription,
       custom_summary: customSummary,
+      resume_data: resumeData,
+    });
+    return res.data;
+  },
+
+  generateAIResumeSummary: async (targetRole, skills = [], experienceHighlights = [], educationHighlights = [], tone = 'impactful') => {
+    const res = await apiClient.post('/ai/student/resume-summary-generate', {
+      target_role: targetRole,
+      skills,
+      experience_highlights: experienceHighlights,
+      education_highlights: educationHighlights,
+      tone,
+    });
+    return res.data;
+  },
+
+  improveAIResumeBullet: async (bulletText, targetRole = null, contextType = 'experience') => {
+    const res = await apiClient.post('/ai/student/resume-bullet-improve', {
+      bullet_text: bulletText,
+      target_role: targetRole,
+      context_type: contextType,
     });
     return res.data;
   },
@@ -391,6 +413,62 @@ export const apiService = {
       message,
       conversation_history: history,
     });
+    return res.data;
+  },
+
+  // --------------------------------------------------------------------------
+  // Phase 6: Super Admin / Platform Governance APIs
+  // --------------------------------------------------------------------------
+  getAdminOverview: async () => {
+    const res = await apiClient.get('/admin/overview');
+    return res.data;
+  },
+
+  getAdminUsers: async (role = null, search = null) => {
+    const params = {};
+    if (role && role !== 'all') params.role = role;
+    if (search) params.search = search;
+    const res = await apiClient.get('/admin/users', { params });
+    return res.data;
+  },
+
+  updateAdminUserStatus: async (userId, status) => {
+    const res = await apiClient.patch(`/admin/users/${userId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminInstitutions: async () => {
+    const res = await apiClient.get('/admin/institutions');
+    return res.data;
+  },
+
+  getAdminCompanies: async () => {
+    const res = await apiClient.get('/admin/companies');
+    return res.data;
+  },
+
+  updateAdminCompanyStatus: async (companyId, status) => {
+    const res = await apiClient.patch(`/admin/companies/${companyId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminOpportunities: async () => {
+    const res = await apiClient.get('/admin/opportunities');
+    return res.data;
+  },
+
+  updateAdminOpportunityStatus: async (opportunityId, status) => {
+    const res = await apiClient.patch(`/admin/opportunities/${opportunityId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminAITelemetry: async () => {
+    const res = await apiClient.get('/admin/ai-telemetry');
+    return res.data;
+  },
+
+  getAdminNationalSkills: async () => {
+    const res = await apiClient.get('/admin/national-skills');
     return res.data;
   },
 };

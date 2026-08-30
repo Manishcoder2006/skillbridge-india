@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 def sanitize_user_context(context: Dict[str, Any]) -> Dict[str, Any]:
     """Sanitizes context dictionary by removing passwords, tokens, and private system attributes."""
@@ -76,25 +76,101 @@ Generate a JSON object with:
 }}"""
 
     @staticmethod
-    def resume_optimizer_prompt(name: str, current_summary: str, skills: List[str], target_role: str) -> str:
-        return f"""Analyze and optimize this engineering resume summary for ATS compliance.
+    def resume_optimizer_prompt(
+        name: str,
+        current_summary: str,
+        skills: List[str],
+        target_role: str,
+        job_description: Optional[str] = None,
+        projects_summary: Optional[str] = "",
+        experience_summary: Optional[str] = ""
+    ) -> str:
+        jd_context = f"\nTarget Job Description:\n{job_description}" if job_description else ""
+        proj_context = f"\nKey Projects: {projects_summary}" if projects_summary else ""
+        exp_context = f"\nExperience: {experience_summary}" if experience_summary else ""
+
+        return f"""You are an expert AI Resume Reviewer and ATS Optimization Engine for SkillBridge India.
+Analyze the candidate's resume against the target role and job description with strict ATS compliance rules (quantifiable impact, action verbs, keyword density, skills alignment).
+
 Candidate: {name}
 Target Role: {target_role}
-Current Summary: {current_summary}
-Skills: {', '.join(skills)}
+Current Summary: {current_summary or 'None provided'}
+Candidate Skills: {', '.join(skills) if skills else 'None listed'}{proj_context}{exp_context}{jd_context}
 
-Generate a JSON object with:
+Generate a valid, parseable JSON object with the following schema:
 {{
-  "overall_ats_score": <int between 70 and 95>,
-  "summary_critique": "<constructive feedback on impact and metrics>",
-  "enhanced_summary_draft": "<high-impact ATS-optimized 2-sentence summary with action verbs>",
+  "overall_ats_score": <realistic integer score 60-98 based on alignment>,
+  "keyword_match_score": <integer percentage 50-98 representing keyword overlap>,
+  "matched_keywords": [<list of 4-8 important technical/domain keywords present in both resume and JD>],
+  "missing_keywords": [<list of 4-8 critical industry keywords present in JD or standard for role but absent in resume>],
+  "matched_skills": [<list of candidate skills that align directly with role>],
+  "missing_skills": [<list of 3-6 recommended high-demand skills to acquire or add>],
+  "strengths": [<list of 2-4 specific strong points found in the resume>],
+  "weaknesses": [<list of 2-4 areas where the resume falls short e.g. lack of metrics, missing tools>],
+  "formatting_warnings": [<list of 1-3 ATS formatting/styling warnings e.g. avoid graphics, ensure standard section headers>],
+  "actionable_improvements": [<list of 3-5 concrete step-by-step improvements to boost score>],
+  "summary_critique": "<2-sentence constructive critique on impact, clarity, and keyword density>",
+  "enhanced_summary_draft": "<high-impact ATS-optimized 2-3 sentence executive summary with active metrics and keywords tailored to role>",
   "bullet_point_improvements": [
     {{
-      "original_example": "<sample weak bullet>",
-      "improved_bullet": "<quantified, impact-driven bullet>"
+      "original_example": "<a weak/generic bullet point from typical student resumes>",
+      "improved_bullet": "<a powerful, quantified, impact-driven bullet point with metrics and tech stack>"
+    }},
+    {{
+      "original_example": "<another generic project bullet point>",
+      "improved_bullet": "<improved quantified bullet with action verb and result>"
     }}
   ],
-  "recommended_keywords_to_add": [<4-6 industry keywords>]
+  "recommended_keywords_to_add": [<list of top 6 recommended keywords for ATS search filters>]
+}}"""
+
+    @staticmethod
+    def resume_bullet_improve_prompt(bullet_text: str, target_role: Optional[str] = None, context_type: str = "experience") -> str:
+        role_ctx = f" for a candidate pursuing a {target_role} role" if target_role else ""
+        return f"""You are an elite ATS resume coach{role_ctx}.
+Rewrite the following resume bullet point to make it highly impactful, action-verb driven, quantified where possible, and ATS friendly.
+DO NOT invent false company names or degrees. Preserve the candidate's core accomplishment and enhance the phrasing with industry best practices (Action Verb + Task/Tech + Quantified Result/Impact).
+
+Input Bullet: "{bullet_text}"
+
+Return a JSON object:
+{{
+  "original": "{bullet_text}",
+  "improved": "<re-written impactful bullet point>",
+  "action_verb_used": "<the primary strong action verb used>",
+  "quantification_tip": "<a brief 1-sentence tip on what specific number or metric the student could customize here>",
+  "keywords_added": [<list of 2-4 ATS technical or action keywords added>]
+}}"""
+
+    @staticmethod
+    def resume_summary_generate_prompt(
+        target_role: Optional[str],
+        skills: List[str],
+        experience_highlights: List[str],
+        education_highlights: List[str],
+        tone: str = "impactful"
+    ) -> str:
+        role = target_role or "Software & Systems Engineer"
+        skills_str = ", ".join(skills) if skills else "Modern software engineering and problem-solving"
+        exp_str = "; ".join(experience_highlights) if experience_highlights else "Academic and independent project experience"
+        edu_str = "; ".join(education_highlights) if education_highlights else "Relevant technical coursework and foundational knowledge"
+
+        return f"""You are an expert executive resume writer for SkillBridge India.
+Write an authentic, highly professional 2-3 sentence resume executive summary tailored to the target role '{role}'.
+Tone: {tone}.
+
+Candidate Background:
+- Key Skills: {skills_str}
+- Projects & Experience Highlights: {exp_str}
+- Education: {edu_str}
+
+Ensure the summary highlights core strengths, demonstrated capabilities, and alignment with modern industry standards.
+
+Return a JSON object:
+{{
+  "summary": "<2-3 sentence polished professional executive summary>",
+  "keywords_included": [<list of 3-5 technical/role keywords seamlessly incorporated>],
+  "estimated_word_count": <integer word count>
 }}"""
 
     @staticmethod

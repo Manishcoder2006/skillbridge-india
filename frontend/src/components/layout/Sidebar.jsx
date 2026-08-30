@@ -101,7 +101,15 @@ export const Sidebar = ({ isMobileOpen, closeMobileMenu }) => {
 
       <nav className="sidebar-nav">
         <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', padding: '0.5rem 0.875rem' }}>
-          Student Ecosystem
+          {role === 'student'
+            ? 'Student Ecosystem'
+            : role === 'academician'
+            ? 'Faculty Ecosystem'
+            : role === 'industry_hr'
+            ? 'Corporate Ecosystem'
+            : role === 'institution_admin'
+            ? 'Institution Administration'
+            : 'National Platform Governance'}
         </div>
         {navItems.map((item) => {
           const Icon = item.icon;

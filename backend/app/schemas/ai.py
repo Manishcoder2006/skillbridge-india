@@ -72,14 +72,51 @@ class LearningRecommendationsResponse(BaseModel):
 
 class ResumeSuggestionsRequest(BaseModel):
     target_job_title: Optional[str] = None
+    target_job_description: Optional[str] = None
     custom_summary: Optional[str] = None
+    resume_data: Optional[Dict[str, Any]] = None
 
 class ResumeSuggestionsResponse(BaseModel):
     overall_ats_score: int
+    keyword_match_score: int = 75
+    matched_keywords: List[str] = []
+    missing_keywords: List[str] = []
+    matched_skills: List[str] = []
+    missing_skills: List[str] = []
+    strengths: List[str] = []
+    weaknesses: List[str] = []
+    formatting_warnings: List[str] = []
+    actionable_improvements: List[str] = []
     summary_critique: str
     enhanced_summary_draft: str
     bullet_point_improvements: List[Dict[str, str]]
     recommended_keywords_to_add: List[str]
+    ai_meta: AIMeta
+
+class ResumeBulletImproveRequest(BaseModel):
+    bullet_text: str
+    target_role: Optional[str] = None
+    context_type: Optional[str] = "experience"  # "experience" | "project"
+
+class ResumeBulletImproveResponse(BaseModel):
+    original: str
+    improved: str
+    action_verb_used: str
+    quantification_tip: str
+    keywords_added: List[str] = []
+    ai_meta: AIMeta
+
+class ResumeSummaryGenerateRequest(BaseModel):
+    target_role: Optional[str] = None
+    skills: List[str] = []
+    experience_highlights: List[str] = []
+    education_highlights: List[str] = []
+    tone: Optional[str] = "impactful"  # "impactful" | "executive" | "concise"
+
+class ResumeSummaryGenerateResponse(BaseModel):
+    summary: str
+    keywords_included: List[str] = []
+    estimated_word_count: int
     ai_meta: AIMeta
 
 # -----------------------------------------------------------------------------

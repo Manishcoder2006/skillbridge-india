@@ -37,6 +37,7 @@ import { StudentAnalytics } from './pages/academician/StudentAnalytics';
 import { LearningContent } from './pages/academician/LearningContent';
 import { AcademicianOpportunities } from './pages/academician/AcademicianOpportunities';
 import { CollaborationSection } from './pages/academician/CollaborationSection';
+import { NotificationsSection } from './pages/academician/NotificationsSection';
 // Industry / HR Pages (Phase 4)
 import { IndustryOverview } from './pages/industry/IndustryOverview';
 import { CompanyProfile } from './pages/industry/CompanyProfile';

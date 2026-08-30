@@ -19,6 +19,8 @@ from app.schemas.ai import (
     LearningRecommendationsResponse,
     RecommendedCourseItem,
     ResumeSuggestionsResponse,
+    ResumeBulletImproveResponse,
+    ResumeSummaryGenerateResponse,
     CandidateMatchResponse,
     EvaluatedCandidateMatch,
     CandidateAnalysisResponse,
@@ -247,55 +249,346 @@ class AIOrchestrator:
             )
         )
 
-    async def get_resume_suggestions(self, user_id: str, target_role: Optional[str] = "Full Stack Engineer", custom_summary: Optional[str] = None) -> ResumeSuggestionsResponse:
-        skills = [s["skill_name"] for s in student_repo.get_student_skills(user_id)]
-        current_resume = student_repo.get_student_resume(user_id)
-        summary = custom_summary or current_resume.get("career_objective", "Engineering student passionate about building web apps.")
+    async def get_resume_suggestions(
+        self,
+        user_id: str,
+        target_role: Optional[str] = "Full Stack Engineer",
+        job_description: Optional[str] = None,
+        custom_summary: Optional[str] = None,
+        custom_resume_data: Optional[Dict[str, Any]] = None
+    ) -> ResumeSuggestionsResponse:
+        profile = student_repo.get_full_student_profile(user_id) if hasattr(student_repo, 'get_full_student_profile') else {}
+        current_resume_record = student_repo.get_student_resume(user_id)
+        current_resume = (current_resume_record.get("data") or {}) if isinstance(current_resume_record, dict) else {}
+
+        # Merge active draft or stored resume
+        active_resume = custom_resume_data or current_resume
+        candidate_name = active_resume.get("full_name") or profile.get("full_name") or "Student"
+        
+        # Skills
+        raw_skills = active_resume.get("skills")
+        if not raw_skills:
+            stored_skills = student_repo.get_student_skills(user_id)
+            raw_skills = [s["skill_name"] for s in stored_skills] if stored_skills else []
+        skills = [s for s in raw_skills if isinstance(s, str) and s.strip()]
+
+        summary = custom_summary or active_resume.get("summary") or "Engineering student passionate about building scalable applications."
+        target_role_str = target_role or active_resume.get("target_role") or "Full Stack Developer"
+        
+        # Summarize projects and experience for AI context
+        projects = active_resume.get("projects", [])
+        projects_summary = "; ".join([f"{p.get('title', '')} ({', '.join(p.get('technologies', []))}): {p.get('description', '')}" for p in projects[:3]])
+        
+        experiences = active_resume.get("experience", [])
+        experience_summary = "; ".join([f"{e.get('job_title', '')} at {e.get('company', '')}: {e.get('description', '')}" for e in experiences[:2]])
 
         strategy, models = model_router.route_task("resume_suggestions")
         prompt = PromptTemplates.resume_optimizer_prompt(
-            name="Aarav Sharma",
+            name=candidate_name,
             current_summary=summary,
             skills=skills,
-            target_role=target_role or "Full Stack Engineer"
+            target_role=target_role_str,
+            job_description=job_description,
+            projects_summary=projects_summary,
+            experience_summary=experience_summary
         )
+
+        # Dynamic fallback generator based on actual resume text and JD
+        resume_text_corpus = f"{summary} {' '.join(skills)} {projects_summary} {experience_summary}".lower()
+        
+        # Standard high-value keywords for common roles
+        role_keywords_map = {
+            "full stack": ["React", "FastAPI", "Node.js", "PostgreSQL", "REST APIs", "Docker", "Git", "TypeScript", "CI/CD", "Authentication", "Unit Testing"],
+            "frontend": ["React", "TypeScript", "Next.js", "Tailwind CSS", "Redux", "Web Performance", "Accessibility", "Responsive Design", "Jest"],
+            "backend": ["Python", "FastAPI", "PostgreSQL", "Redis", "Docker", "Microservices", "gRPC", "Message Queues", "System Design", "Kubernetes"],
+            "ai": ["Python", "PyTorch", "TensorFlow", "Scikit-Learn", "FastAPI", "NLP", "LLMs", "Prompt Engineering", "Pandas", "Vector DBs"],
+            "cloud": ["Docker", "Kubernetes", "AWS", "Terraform", "CI/CD", "Linux", "Microservices", "Monitoring", "Security"],
+        }
+        
+        matched_kw = []
+        missing_kw = []
+        
+        # Extract potential JD keywords if provided
+        jd_keywords = []
+        if job_description:
+            words = [w.strip(".,;:()[]{}\"'").capitalize() for w in job_description.split() if len(w) > 3]
+            jd_keywords = list(dict.fromkeys(words))[:15]
+            for kw in jd_keywords:
+                if kw.lower() in resume_text_corpus:
+                    matched_kw.append(kw)
+                else:
+                    missing_kw.append(kw)
+        
+        if not matched_kw or len(matched_kw) < 3:
+            role_key = next((k for k in role_keywords_map if k in target_role_str.lower()), "full stack")
+            std_kws = role_keywords_map[role_key]
+            for kw in std_kws:
+                if kw.lower() in resume_text_corpus:
+                    if kw not in matched_kw:
+                        matched_kw.append(kw)
+                else:
+                    if kw not in missing_kw:
+                        missing_kw.append(kw)
+        
+        matched_kw = matched_kw[:6]
+        missing_kw = missing_kw[:6]
+        
+        # Match percentage calculation
+        total_eval = len(matched_kw) + len(missing_kw)
+        match_rate = int((len(matched_kw) / total_eval) * 100) if total_eval > 0 else 75
+        ats_score = min(96, max(62, 55 + int(match_rate * 0.4) + min(len(skills), 6) * 2))
 
         fallback_data = {
-            "overall_ats_score": 88,
-            "summary_critique": "Your summary is clear but lacks measurable impact metrics and specific distributed systems keywords.",
-            "enhanced_summary_draft": "High-performing B.Tech Computer Science student with proven expertise in building high-throughput FastAPI microservices and responsive React web applications. Proven track record in relational database design, REST API architecture, and automated cloud deployments.",
+            "overall_ats_score": ats_score,
+            "keyword_match_score": match_rate,
+            "matched_keywords": matched_kw or ["React", "Python", "REST APIs", "Git"],
+            "missing_keywords": missing_kw or ["CI/CD", "Docker", "PostgreSQL RLS", "System Design"],
+            "matched_skills": [s for s in skills if any(s.lower() in kw.lower() or kw.lower() in s.lower() for kw in (matched_kw + [target_role_str]))][:5] or skills[:4],
+            "missing_skills": missing_kw[:4] or ["Docker", "Automated Testing", "Cloud Deployment"],
+            "strengths": [
+                f"Strong demonstrated foundational skills in {', '.join(skills[:3]) if skills else 'core technologies'}.",
+                "Clear project descriptions highlighting practical full-stack and software development.",
+                "Well-structured academic background with relevant technical coursework."
+            ],
+            "weaknesses": [
+                "Summary and project bullets could include more quantified metrics (e.g. % performance increase, latency reductions).",
+                f"Missing explicit alignment with industry keywords like {', '.join(missing_kw[:3]) if missing_kw else 'distributed systems'}."
+            ],
+            "formatting_warnings": [
+                "Ensure clean standard section headings (Education, Experience, Projects, Skills).",
+                "Keep bullet points concise (1-2 lines each) for seamless ATS parsing."
+            ],
+            "actionable_improvements": [
+                f"Incorporate missing keywords ({', '.join(missing_kw[:3]) if missing_kw else 'Docker, CI/CD'}) directly into project descriptions.",
+                "Add measurable performance outcomes to each key project bullet point.",
+                "Adopt the AI-enhanced executive summary draft below for stronger recruiter appeal."
+            ],
+            "summary_critique": f"Your profile is solid for {target_role_str}, but adding specific impact metrics and targeting keywords like {', '.join(missing_kw[:2]) if missing_kw else 'cloud technologies'} will significantly increase your ATS match rate.",
+            "enhanced_summary_draft": f"Results-driven engineering student specializing in {target_role_str} with hands-on expertise in {', '.join(skills[:3]) if skills else 'modern web architecture'} and scalable system design. Proven track record in developing high-reliability applications, streamlining REST API performance, and collaborating in agile environments.",
             "bullet_point_improvements": [
                 {
-                    "original_example": "Built a student portal using React and Python.",
-                    "improved_bullet": "Engineered full stack academia–industry collaboration portal using FastAPI and React 18, cutting verification latency by 45% with PostgreSQL multi-tenant RLS."
+                    "original_example": "Built a web application using React and FastAPI.",
+                    "improved_bullet": f"Engineered scalable {target_role_str} application using modern microservice architecture, reducing API response latency by 35% with optimized queries."
                 },
                 {
-                    "original_example": "Worked on database tables and authentication.",
-                    "improved_bullet": "Implemented secure JWT role-based access control and strict institutional tenancy isolation supporting 5 distinct stakeholder roles."
+                    "original_example": "Worked on database design and user authentication.",
+                    "improved_bullet": "Implemented secure JWT authentication and role-based access control (RBAC), safeguarding multi-tenant data integrity across hundreds of simulated users."
                 }
             ],
-            "recommended_keywords_to_add": ["FastAPI", "PostgreSQL RLS", "Docker", "REST Architecture", "CI/CD", "Vite"]
+            "recommended_keywords_to_add": missing_kw[:6] or ["FastAPI", "PostgreSQL", "Docker", "REST Architecture", "CI/CD", "Vite"]
         }
 
-        parsed, latency, is_fallback = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data=fallback_data
-        )
+        parsed = None
+        latency = 0
+        is_fallback = False
+        
+        # 1. Attempt Gemini Service
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_data
+            )
+        except Exception:
+            is_fallback = True
+
+        # 2. If Gemini fell back and Groq is available, attempt Groq inference
+        if is_fallback and groq_service.api_key and not groq_service.api_key.startswith("your-"):
+            try:
+                g_parsed, g_latency, g_is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_data
+                )
+                if not g_is_fallback and g_parsed:
+                    parsed = g_parsed
+                    latency = g_latency
+                    is_fallback = False
+                    models = ["llama-3.3-70b-versatile (Groq LPU)"]
+            except Exception:
+                pass
+
+        if not parsed or is_fallback:
+            parsed = fallback_data
+            is_fallback = True
 
         self._log_execution(user_id, "student", "resume_suggestions", models[0], None, strategy, latency, is_fallback)
 
         return ResumeSuggestionsResponse(
-            overall_ats_score=parsed.get("overall_ats_score", 88),
+            overall_ats_score=parsed.get("overall_ats_score", fallback_data["overall_ats_score"]),
+            keyword_match_score=parsed.get("keyword_match_score", fallback_data["keyword_match_score"]),
+            matched_keywords=parsed.get("matched_keywords", fallback_data["matched_keywords"]),
+            missing_keywords=parsed.get("missing_keywords", fallback_data["missing_keywords"]),
+            matched_skills=parsed.get("matched_skills", fallback_data["matched_skills"]),
+            missing_skills=parsed.get("missing_skills", fallback_data["missing_skills"]),
+            strengths=parsed.get("strengths", fallback_data["strengths"]),
+            weaknesses=parsed.get("weaknesses", fallback_data["weaknesses"]),
+            formatting_warnings=parsed.get("formatting_warnings", fallback_data["formatting_warnings"]),
+            actionable_improvements=parsed.get("actionable_improvements", fallback_data["actionable_improvements"]),
             summary_critique=parsed.get("summary_critique", fallback_data["summary_critique"]),
             enhanced_summary_draft=parsed.get("enhanced_summary_draft", fallback_data["enhanced_summary_draft"]),
             bullet_point_improvements=parsed.get("bullet_point_improvements", fallback_data["bullet_point_improvements"]),
             recommended_keywords_to_add=parsed.get("recommended_keywords_to_add", fallback_data["recommended_keywords_to_add"]),
             ai_meta=AIMeta(
-                model_used=models[0],
+                model_used=models[0] if not is_fallback else "SkillBridge ATS Engine (High-Fidelity)",
                 routing_strategy=strategy,
                 latency_ms=latency,
-                confidence_score=0.97,
+                confidence_score=0.97 if not is_fallback else 0.92,
+                is_simulated_fallback=is_fallback
+            )
+        )
+
+    async def improve_resume_bullet(
+        self,
+        user_id: str,
+        bullet_text: str,
+        target_role: Optional[str] = None,
+        context_type: str = "experience"
+    ) -> ResumeBulletImproveResponse:
+        strategy, models = model_router.route_task("resume_suggestions")
+        prompt = PromptTemplates.resume_bullet_improve_prompt(bullet_text, target_role, context_type)
+
+        # High-fidelity deterministic fallback if API is unreachable
+        clean_text = bullet_text.strip()
+        words = clean_text.split()
+        first_word = words[0] if words else "Developed"
+        
+        # Determine appropriate action verb
+        action_verbs = ["Architected", "Engineered", "Optimized", "Spearheaded", "Implemented", "Streamlined", "Deployed"]
+        chosen_verb = action_verbs[len(bullet_text) % len(action_verbs)]
+        
+        fallback_data = {
+            "original": bullet_text,
+            "improved": f"{chosen_verb} {clean_text.lstrip(first_word).strip()} utilizing industry-standard best practices, resulting in enhanced operational efficiency and measurable reliability.",
+            "action_verb_used": chosen_verb,
+            "quantification_tip": "Add a concrete metric such as percentage latency reduction (e.g., 'by 35%') or user scale (e.g., 'supporting 500+ active users').",
+            "keywords_added": ["Operational Efficiency", "Reliability", "Best Practices", chosen_verb]
+        }
+
+        parsed = None
+        latency = 0
+        is_fallback = False
+
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_data
+            )
+        except Exception:
+            is_fallback = True
+
+        if is_fallback and groq_service.api_key and not groq_service.api_key.startswith("your-"):
+            try:
+                g_parsed, g_latency, g_is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_data
+                )
+                if not g_is_fallback and g_parsed:
+                    parsed = g_parsed
+                    latency = g_latency
+                    is_fallback = False
+                    models = ["llama-3.3-70b-versatile (Groq LPU)"]
+            except Exception:
+                pass
+
+        if not parsed or is_fallback:
+            parsed = fallback_data
+            is_fallback = True
+
+        self._log_execution(user_id, "student", "resume_bullet_improve", models[0], None, strategy, latency, is_fallback)
+
+        return ResumeBulletImproveResponse(
+            original=parsed.get("original", bullet_text),
+            improved=parsed.get("improved", fallback_data["improved"]),
+            action_verb_used=parsed.get("action_verb_used", fallback_data["action_verb_used"]),
+            quantification_tip=parsed.get("quantification_tip", fallback_data["quantification_tip"]),
+            keywords_added=parsed.get("keywords_added", fallback_data["keywords_added"]),
+            ai_meta=AIMeta(
+                model_used=models[0] if not is_fallback else "SkillBridge Action Coach Engine",
+                routing_strategy=strategy,
+                latency_ms=latency,
+                confidence_score=0.96 if not is_fallback else 0.90,
+                is_simulated_fallback=is_fallback
+            )
+        )
+
+    async def generate_resume_summary(
+        self,
+        user_id: str,
+        target_role: Optional[str] = None,
+        skills: List[str] = [],
+        experience_highlights: List[str] = [],
+        education_highlights: List[str] = [],
+        tone: str = "impactful"
+    ) -> ResumeSummaryGenerateResponse:
+        strategy, models = model_router.route_task("resume_suggestions")
+        prompt = PromptTemplates.resume_summary_generate_prompt(
+            target_role=target_role,
+            skills=skills,
+            experience_highlights=experience_highlights,
+            education_highlights=education_highlights,
+            tone=tone
+        )
+
+        role = target_role or "Software & Systems Engineer"
+        skill_str = ", ".join(skills[:4]) if skills else "modern full-stack web technologies"
+        fallback_summary = (
+            f"Results-oriented {role} candidate with a strong foundation in {skill_str}. "
+            f"Demonstrated capability in architecting reliable end-to-end applications and collaborating across agile engineering teams. "
+            f"Passionate about leveraging scalable architectures and continuous learning to drive measurable product impact."
+        )
+
+        fallback_data = {
+            "summary": fallback_summary,
+            "keywords_included": skills[:4] or ["Scalable Architecture", "Agile", "End-to-End Development"],
+            "estimated_word_count": len(fallback_summary.split())
+        }
+
+        parsed = None
+        latency = 0
+        is_fallback = False
+
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_data
+            )
+        except Exception:
+            is_fallback = True
+
+        if is_fallback and groq_service.api_key and not groq_service.api_key.startswith("your-"):
+            try:
+                g_parsed, g_latency, g_is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_data
+                )
+                if not g_is_fallback and g_parsed:
+                    parsed = g_parsed
+                    latency = g_latency
+                    is_fallback = False
+                    models = ["llama-3.3-70b-versatile (Groq LPU)"]
+            except Exception:
+                pass
+
+        if not parsed or is_fallback:
+            parsed = fallback_data
+            is_fallback = True
+
+        self._log_execution(user_id, "student", "resume_summary_generate", models[0], None, strategy, latency, is_fallback)
+
+        return ResumeSummaryGenerateResponse(
+            summary=parsed.get("summary", fallback_data["summary"]),
+            keywords_included=parsed.get("keywords_included", fallback_data["keywords_included"]),
+            estimated_word_count=parsed.get("estimated_word_count", fallback_data["estimated_word_count"]),
+            ai_meta=AIMeta(
+                model_used=models[0] if not is_fallback else "SkillBridge Summary Synthesizer",
+                routing_strategy=strategy,
+                latency_ms=latency,
+                confidence_score=0.96 if not is_fallback else 0.90,
                 is_simulated_fallback=is_fallback
             )
         )

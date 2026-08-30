@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, health, institutions, users, student, academician, industry, ai
+from app.api.v1.endpoints import auth, health, institutions, users, student, academician, industry, ai, admin
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(student.router, prefix="/student")
 api_router.include_router(academician.router, prefix="/academician")
 api_router.include_router(industry.router, prefix="/industry")
 api_router.include_router(ai.router, prefix="/ai")
+api_router.include_router(admin.router, prefix="/admin")
