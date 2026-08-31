@@ -1,24 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { Card } from '../../components/common/Card';
-import { Badge } from '../../components/common/Badge';
-import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
-import { Select } from '../../components/common/Select';
 import { Spinner } from '../../components/common/Spinner';
 import {
   Briefcase,
   Building2,
   MapPin,
   Calendar,
-  DollarSign,
   CheckCircle2,
   Send,
   Search,
   Filter,
   X,
-  FileText,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const OpportunitiesSection = () => {
@@ -26,12 +23,19 @@ export const OpportunitiesSection = () => {
   const [opportunities, setOpportunities] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters
+  // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [workModeFilter, setWorkModeFilter] = useState('all');
 
-  // Detail / Application Modal
+  // Bookmarks State
+  const [bookmarkedOpps, setBookmarkedOpps] = useState({});
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Detail / Application Modal State
   const [selectedOpp, setSelectedOpp] = useState(null);
   const [applyNotes, setApplyNotes] = useState('');
   const [applying, setApplying] = useState(false);
@@ -52,6 +56,15 @@ export const OpportunitiesSection = () => {
     }
   };
 
+  const toggleBookmark = (e, oppId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBookmarkedOpps((prev) => ({
+      ...prev,
+      [oppId]: !prev[oppId],
+    }));
+  };
+
   const handleApply = async (e) => {
     e.preventDefault();
     if (!selectedOpp) return;
@@ -59,7 +72,7 @@ export const OpportunitiesSection = () => {
       setApplying(true);
       await apiService.applyForOpportunity(selectedOpp.id, applyNotes);
       showSuccess(`Application submitted to ${selectedOpp.company_name}!`);
-      // Update local state to show applied
+      // Update local state to reflect applied status
       setOpportunities(
         opportunities.map((o) => (o.id === selectedOpp.id ? { ...o, is_applied: true } : o))
       );
@@ -82,229 +95,450 @@ export const OpportunitiesSection = () => {
     return matchesSearch && matchesType && matchesMode;
   });
 
+  // Calculate Paginated slice
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedOpps = filtered.slice(startIndex, startIndex + pageSize);
+
+  // Helper for company logo rendering
+  const renderCompanyLogo = (opp) => {
+    const name = (opp.company_name || '').toLowerCase();
+    if (name.includes('tata') || opp.brand === 'tcs') {
+      return (
+        <div className="opp-logo-container" style={{ backgroundColor: '#1d4ed8' }}>
+          <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#ffffff', letterSpacing: '1px' }}>
+            TATA
+          </span>
+        </div>
+      );
+    }
+    if (name.includes('infosys') || opp.brand === 'infosys') {
+      return (
+        <div className="opp-logo-container" style={{ backgroundColor: '#0284c7' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#ffffff', fontStyle: 'italic' }}>
+            Infosys
+          </span>
+        </div>
+      );
+    }
+    if (name.includes('larsen') || name.includes('toubro') || opp.brand === 'lt') {
+      return (
+        <div className="opp-logo-container" style={{ backgroundColor: '#0f172a' }}>
+          <div style={{ textAlign: 'center', lineHeight: 1 }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: '#ffffff', display: 'block' }}>L&T</span>
+            <span style={{ fontSize: '0.5rem', fontWeight: 700, color: '#94a3b8', letterSpacing: '0.5px' }}>GLOBAL</span>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="opp-logo-container" style={{ background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' }}>
+        <Briefcase size={24} color="#ffffff" />
+      </div>
+    );
+  };
+
   if (loading && opportunities.length === 0) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <Spinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Internships & Job Opportunities</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+    <div className="opp-page-container">
+      {/* Background Decorative Technical Dot Grid */}
+      <div className="dot-grid-watermark" aria-hidden="true" />
+
+      {/* Page Header */}
+      <div className="opp-page-header">
+        <span className="opp-eyebrow">OPPORTUNITIES</span>
+        <h1 className="opp-page-title">Internships & Job Opportunities</h1>
+        <p className="opp-page-subtitle">
           Discover verified engineering internships and graduate placement openings directly mapped to your validated skill sets.
         </p>
+        <div className="opp-teal-line" />
       </div>
 
-      {/* Filter Toolbar */}
-      <Card>
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ flex: 2, minWidth: '240px' }}>
-            <Input
-              placeholder="Search by title, company, or required skill..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div style={{ flex: 1, minWidth: '150px' }}>
-            <Select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Types (Job & Intern)' },
-                { value: 'internship', label: 'Internships Only' },
-                { value: 'job', label: 'Full-Time Jobs' },
-              ]}
-            />
-          </div>
-
-          <div style={{ flex: 1, minWidth: '150px' }}>
-            <Select
-              value={workModeFilter}
-              onChange={(e) => setWorkModeFilter(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Work Modes' },
-                { value: 'remote', label: 'Remote' },
-                { value: 'hybrid', label: 'Hybrid' },
-                { value: 'on_site', label: 'On-Site' },
-              ]}
-            />
-          </div>
+      {/* Horizontal Search & Filter Control Toolbar */}
+      <div className="opp-filter-toolbar">
+        <div className="opp-search-box">
+          <Search size={16} className="opp-search-icon" />
+          <input
+            type="text"
+            className="opp-search-input"
+            placeholder="Search by title, company, or required skill..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
-      </Card>
 
-      {/* Opportunity Cards List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="opp-select-box">
+          <select
+            className="opp-select"
+            value={typeFilter}
+            onChange={(e) => {
+              setTypeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">All Types (Job & Intern)</option>
+            <option value="internship">Internships Only</option>
+            <option value="job">Full-Time Jobs</option>
+          </select>
+        </div>
+
+        <div className="opp-select-box">
+          <select
+            className="opp-select"
+            value={workModeFilter}
+            onChange={(e) => {
+              setWorkModeFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">All Work Modes</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="on_site">On-Site</option>
+          </select>
+        </div>
+
+        <button type="button" className="opp-filter-toggle-btn">
+          <SlidersHorizontal size={15} />
+          <span>Filters</span>
+        </button>
+      </div>
+
+      {/* Opportunities Listing Cards */}
+      <div className="opp-cards-list">
         {filtered.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No matching opportunities found with the selected criteria.
+          <div
+            style={{
+              padding: '3.5rem 1.5rem',
+              textAlign: 'center',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e8edf5',
+              color: '#64748b',
+            }}
+          >
+            <p style={{ fontWeight: 600, fontSize: '1rem', color: '#0f172a' }}>No matching opportunities found.</p>
+            <p style={{ fontSize: '0.85rem', marginTop: '0.35rem' }}>
+              Try adjusting your search criteria or resetting filters to view all openings.
+            </p>
           </div>
         ) : (
-          filtered.map((opp) => (
-            <Card key={opp.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ flex: 1, minWidth: '280px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <Badge variant={opp.type === 'internship' ? 'primary' : 'success'}>
-                      {opp.type.toUpperCase()}
-                    </Badge>
-                    <Badge variant="neutral" style={{ textTransform: 'capitalize' }}>
-                      {opp.work_mode}
-                    </Badge>
-                    <span style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 700 }}>
-                      {opp.stipend_or_salary}
+          paginatedOpps.map((opp) => {
+            const isBookmarked = Boolean(bookmarkedOpps[opp.id]);
+            const isIntern = opp.type === 'internship';
+
+            return (
+              <div key={opp.id} className="opp-listing-card">
+                {/* Company Logo Monogram */}
+                {renderCompanyLogo(opp)}
+
+                {/* Main Content Area */}
+                <div className="opp-main-content">
+                  {/* Top Metadata Row */}
+                  <div className="opp-top-meta-row">
+                    <div className="opp-badges-group">
+                      <span className={`opp-badge-type ${isIntern ? 'internship' : 'job'}`}>
+                        {opp.type}
+                      </span>
+                      <span className="opp-badge-mode">{opp.work_mode || 'Hybrid'}</span>
+                      <span className="opp-salary-tag">{opp.stipend_or_salary}</span>
+                    </div>
+
+                    <div className="opp-right-actions">
+                      {opp.is_applied ? (
+                        <span className="opp-applied-pill">
+                          <CheckCircle2 size={15} /> Applied
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="opp-apply-btn"
+                          onClick={() => setSelectedOpp(opp)}
+                        >
+                          View & Apply
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        className={`opp-bookmark-btn ${isBookmarked ? 'bookmarked' : ''}`}
+                        onClick={(e) => toggleBookmark(e, opp.id)}
+                        aria-label="Bookmark opportunity"
+                        title={isBookmarked ? 'Saved' : 'Bookmark opportunity'}
+                      >
+                        <Bookmark size={18} fill={isBookmarked ? '#d97706' : 'none'} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Role Title */}
+                  <h2 className="opp-job-title">{opp.title}</h2>
+
+                  {/* Company, Location & Deadline */}
+                  <div className="opp-metadata-line">
+                    <span className="opp-company-label">
+                      <Building2 size={15} color="#0d9488" /> {opp.company_name}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="opp-location-label">
+                      <MapPin size={15} /> {opp.location}
+                    </span>
+                    <span>&bull;</span>
+                    <span className="opp-deadline-label">
+                      <Calendar size={15} /> Deadline: {opp.application_deadline || '2026-10-31'}
                     </span>
                   </div>
 
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>{opp.title}</h3>
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, color: '#0f766e' }}>
-                      <Building2 size={14} color="#0d9488" /> {opp.company_name}
-                    </span>
-                    <span>•</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <MapPin size={14} color="#64748b" /> {opp.location}
-                    </span>
-                    <span>•</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#b91c1c', fontWeight: 600 }}>
-                      <Calendar size={14} /> Deadline: {opp.application_deadline}
-                    </span>
-                  </div>
+                  {/* Description */}
+                  <p className="opp-description">{opp.description}</p>
 
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.75rem 0', lineHeight: 1.5 }}>
-                    {opp.description}
-                  </p>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Required Skills:</span>
-                    {opp.required_skills?.map((s, i) => (
-                      <span key={i} style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#334155', padding: '2px 8px', borderRadius: '4px', fontWeight: 500, border: '1px solid #e2e8f0' }}>
-                        {s}
+                  {/* Required Skills Badges */}
+                  <div className="opp-skills-row">
+                    <span className="opp-skills-label">Required Skills:</span>
+                    {opp.required_skills?.map((skill, sIdx) => (
+                      <span key={sIdx} className="opp-skill-pill">
+                        {skill}
                       </span>
                     ))}
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-                  {opp.is_applied ? (
-                    <Badge variant="success">
-                      <CheckCircle2 size={14} style={{ marginRight: '4px' }} /> Applied
-                    </Badge>
-                  ) : (
-                    <Button onClick={() => setSelectedOpp(opp)} variant="primary">
-                      View & Apply
-                    </Button>
-                  )}
-                </div>
               </div>
-            </Card>
-          ))
+            );
+          })
         )}
       </div>
 
+      {/* Pagination Footer */}
+      {filtered.length > 0 && (
+        <div className="opp-pagination-bar">
+          <div>
+            Showing {Math.min(startIndex + 1, totalItems)} to{' '}
+            {Math.min(startIndex + pageSize, totalItems)} of {totalItems} opportunities
+          </div>
+
+          <div className="opp-pagination-numbers">
+            <button
+              type="button"
+              className="opp-page-btn"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {[1, 2, 3, 4, 5].slice(0, totalPages).map((pageNum) => (
+              <button
+                key={pageNum}
+                type="button"
+                className={`opp-page-btn ${currentPage === pageNum ? 'active' : ''}`}
+                onClick={() => setCurrentPage(pageNum)}
+              >
+                {pageNum}
+              </button>
+            ))}
+
+            {totalPages > 5 && <span style={{ padding: '0 4px', color: '#94a3b8' }}>...</span>}
+
+            <button
+              type="button"
+              className="opp-page-btn"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          <div>
+            <select
+              className="opp-page-size-select"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Opportunity Detail & Application Modal */}
       {selectedOpp && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-            zIndex: 100,
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-lg)',
-              boxShadow: 'var(--shadow-xl)',
-              maxWidth: '650px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '1.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem',
-            }}
-          >
+        <div className="opp-modal-overlay">
+          <div className="opp-modal-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <Badge variant={selectedOpp.type === 'internship' ? 'primary' : 'success'}>
-                  {selectedOpp.type.toUpperCase()}
-                </Badge>
-                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.5rem' }}>
+                <span
+                  className={`opp-badge-type ${
+                    selectedOpp.type === 'internship' ? 'internship' : 'job'
+                  }`}
+                >
+                  {selectedOpp.type}
+                </span>
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '0.5rem' }}>
                   {selectedOpp.title}
                 </h2>
-                <div style={{ color: '#0d9488', fontWeight: 700, fontSize: '0.95rem' }}>
-                  {selectedOpp.company_name}
+                <div style={{ color: '#0d9488', fontWeight: 700, fontSize: '0.95rem', marginTop: '0.2rem' }}>
+                  {selectedOpp.company_name} &bull; {selectedOpp.location}
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedOpp(null)}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '6px',
+                }}
+                aria-label="Close modal"
               >
                 <X size={22} />
               </button>
             </div>
 
-            <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Eligibility & Criteria</div>
-              <div style={{ color: 'var(--text-primary)', fontSize: '0.85rem', marginTop: '0.25rem', lineHeight: 1.4 }}>
-                {selectedOpp.eligibility}
+            <div
+              style={{
+                padding: '1rem',
+                backgroundColor: '#f8fafc',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Eligibility & Criteria
+              </div>
+              <div style={{ color: '#0f172a', fontSize: '0.875rem', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                {selectedOpp.eligibility || 'Open to all verified enrolled students with prerequisite skills.'}
               </div>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.35rem' }}>
                 Role Description & Scope
               </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <p style={{ fontSize: '0.875rem', color: '#475569', lineHeight: 1.6 }}>
                 {selectedOpp.description}
               </p>
             </div>
 
             <div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
                 Required Verified Skills
               </div>
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {selectedOpp.required_skills?.map((s, i) => (
-                  <Badge key={i} variant="primary">{s}</Badge>
+                  <span key={i} className="opp-skill-pill">
+                    {s}
+                  </span>
                 ))}
               </div>
             </div>
 
             {selectedOpp.is_applied ? (
-              <div style={{ padding: '1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 'var(--radius-md)', textAlign: 'center', color: '#166534', fontWeight: 700 }}>
-                ✓ You have already applied for this opening. Track status in Applications.
+              <div
+                style={{
+                  padding: '1rem',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  color: '#166534',
+                  fontWeight: 700,
+                }}
+              >
+                ✓ You have already applied for this opening. Track your application status in the Applications Tracker.
               </div>
             ) : (
               <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                <Input
-                  label="Application Cover Note (Optional)"
-                  placeholder="Mention your key project highlights or relevant coursework..."
-                  value={applyNotes}
-                  onChange={(e) => setApplyNotes(e.target.value)}
-                />
+                <div>
+                  <label
+                    htmlFor="apply-notes-input"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      marginBottom: '0.35rem',
+                    }}
+                  >
+                    Application Cover Note (Optional)
+                  </label>
+                  <textarea
+                    id="apply-notes-input"
+                    rows={3}
+                    placeholder="Highlight your relevant verified skills, portfolio projects, or academic achievements..."
+                    value={applyNotes}
+                    onChange={(e) => setApplyNotes(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      fontSize: '0.875rem',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#f8fafc',
+                      color: '#0f172a',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                  <Button type="button" variant="secondary" onClick={() => setSelectedOpp(null)}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOpp(null)}
+                    style={{
+                      padding: '0.625rem 1.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      backgroundColor: '#ffffff',
+                      color: '#475569',
+                      cursor: 'pointer',
+                    }}
+                  >
                     Cancel
-                  </Button>
-                  <Button type="submit" disabled={applying} variant="success">
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={applying}
+                    style={{
+                      padding: '0.625rem 1.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: 700,
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: '#0d9488',
+                      color: '#ffffff',
+                      cursor: applying ? 'not-allowed' : 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
                     <Send size={16} /> {applying ? 'Submitting...' : 'Submit Application'}
-                  </Button>
+                  </button>
                 </div>
               </form>
             )}

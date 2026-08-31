@@ -82,7 +82,7 @@ const STEPS = [
     icon: FileText,
     titlePrefix: 'Professional',
     titleSuffix: 'Summary',
-    desc: 'Craft a compelling executive pitch or generate one with SkillBridge AI.',
+    desc: 'Craft a compelling executive pitch or summary for recruiters.',
   },
 ];
 
@@ -1040,19 +1040,6 @@ export const ResumeBuilder = () => {
       </main>
 
       {/* =========================================================================
-          FLOATING AI ASSISTANT BUTTON (Bottom-Right corner with online dot)
-         ========================================================================= */}
-      <button
-        type="button"
-        onClick={() => setActiveModal('ats')}
-        className="rb-floating-ai"
-        title="Open AI ATS Advisor"
-      >
-        <Sparkles size={22} />
-        <div className="rb-floating-ai-dot" />
-      </button>
-
-      {/* =========================================================================
           MODAL: LIVE RESUME PREVIEW (Clean A4 Sheet Canvas)
          ========================================================================= */}
       {showPreviewModal && (
@@ -1724,7 +1711,7 @@ export const ResumeBuilder = () => {
                   type="text"
                   value={projForm.title}
                   onChange={(e) => setProjForm({ ...projForm, title: e.target.value })}
-                  placeholder="e.g. SkillBridge AI Portal"
+                  placeholder="e.g. SkillBridge Collaboration Platform"
                   className="rb-input"
                   style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', height: '40px', padding: '0 12px' }}
                 />

@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Footer } from './Footer';
-import { AIAssistantModal } from '../ai/AIAssistantModal';
 
 export const AppLayout = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -31,9 +30,6 @@ export const AppLayout = () => {
         </main>
         <Footer />
       </div>
-
-      {/* Global Context-Aware AI Assistant (Phase 5) */}
-      <AIAssistantModal />
     </div>
   );
 };

@@ -17,26 +17,33 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       try {
         if (isLiveSupabase) {
-          const { data: { session: activeSession } } = await supabase.auth.getSession();
-          if (activeSession && mounted) {
-            setSession(activeSession);
-            localStorage.setItem('sb_auth_token', activeSession.access_token);
-            // Fetch verified user profile
-            const profile = await apiService.getProfile();
-            setUser(profile);
+          try {
+            const { data: { session: activeSession } } = await supabase.auth.getSession();
+            if (activeSession && mounted) {
+              setSession(activeSession);
+              localStorage.setItem('sb_auth_token', activeSession.access_token);
+              // Fetch verified user profile
+              const profile = await apiService.getProfile();
+              setUser(profile);
+              return;
+            }
+          } catch (supaInitErr) {
+            console.warn('Supabase session getSession error, falling back to local storage:', supaInitErr);
           }
-        } else {
-          // Dev / Local session restoration
-          const storedToken = localStorage.getItem('sb_auth_token');
-          const storedUser = localStorage.getItem('sb_user_profile');
-          if (storedToken && storedUser && mounted) {
+        }
+        
+        // Dev / Local session restoration
+        const storedToken = localStorage.getItem('sb_auth_token');
+        const storedUser = localStorage.getItem('sb_user_profile');
+        if (storedToken && storedUser && mounted) {
+          try {
             setUser(JSON.parse(storedUser));
+          } catch (e) {
+            localStorage.removeItem('sb_user_profile');
           }
         }
       } catch (err) {
         console.error('Session initialization error:', err);
-        localStorage.removeItem('sb_auth_token');
-        localStorage.removeItem('sb_user_profile');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -79,13 +86,23 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       if (isLiveSupabase) {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError) throw authError;
-        setSession(data.session);
-        localStorage.setItem('sb_auth_token', data.session.access_token);
-        const profile = await apiService.getProfile();
-        setUser(profile);
-        return profile;
+        try {
+          const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+          if (authError) throw authError;
+          setSession(data.session);
+          localStorage.setItem('sb_auth_token', data.session.access_token);
+          const profile = await apiService.getProfile();
+          setUser(profile);
+          return profile;
+        } catch (supaErr) {
+          console.warn('Live Supabase auth network error, falling back to backend API:', supaErr);
+          // Fallback to FastAPI backend auth
+          const res = await apiService.login(email, password);
+          localStorage.setItem('sb_auth_token', res.access_token);
+          localStorage.setItem('sb_user_profile', JSON.stringify(res.user));
+          setUser(res.user);
+          return res.user;
+        }
       } else {
         const res = await apiService.login(email, password);
         localStorage.setItem('sb_auth_token', res.access_token);

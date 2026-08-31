@@ -108,6 +108,14 @@ export function App() {
                 }
               />
               <Route
+                path="student/skills-career"
+                element={<Navigate to="/dashboard/student/skills" replace />}
+              />
+              <Route
+                path="skills-career"
+                element={<Navigate to="/dashboard/student/skills" replace />}
+              />
+              <Route
                 path="student/learning"
                 element={
                   <RoleRoute allowedRoles={['student', 'super_admin']}>

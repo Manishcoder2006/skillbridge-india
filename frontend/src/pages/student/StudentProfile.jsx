@@ -1,23 +1,32 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { useToast } from '../../hooks/useToast';
-import { Card } from '../../components/common/Card';
-import { Badge } from '../../components/common/Badge';
-import { Input } from '../../components/common/Input';
-import { Button } from '../../components/common/Button';
 import { Spinner } from '../../components/common/Spinner';
 import {
   User,
+  Mail,
+  Phone,
+  Calendar,
+  UserCheck,
+  Flag,
   GraduationCap,
   Building2,
   Lock,
   Save,
-  Plus,
-  Trash2,
-  Award,
-  FolderGit2,
   CheckCircle2,
-  FileBadge,
+  FileText,
+  TrendingUp,
+  Award,
+  Trophy,
+  Star,
+  MapPin,
+  FileCheck2,
+  Brain,
+  BookOpen,
+  ArrowRight,
+  ShieldCheck,
+  Layers,
 } from 'lucide-react';
 
 export const StudentProfile = () => {
@@ -26,24 +35,27 @@ export const StudentProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Form states
+  // Form states matching existing data
   const [formData, setFormData] = useState({
     full_name: '',
-    phone: '',
-    location: '',
-    program: '',
+    phone: '+91 98765 43210',
+    location: 'Hauz Khas, New Delhi, Delhi 110016',
+    date_of_birth: '12 Aug 2004',
+    gender: 'Male',
+    nationality: 'Indian',
+    program: 'B.Tech Computer Science and Engineering',
     current_semester: 6,
-    cgpa: 8.5,
+    year_of_study: '3rd Year',
+    enrollment_number: '2023CS12345',
+    cgpa: 8.45,
+    section_batch: 'CSE - C3',
+    expected_graduation: 'May 2027',
     career_interests: [],
     education: [],
     projects: [],
     certifications: [],
     achievements: [],
   });
-
-  const [newProject, setNewProject] = useState({ title: '', description: '', technologies: '', github_or_demo_url: '' });
-  const [newCert, setNewCert] = useState({ name: '', issuer: '', issue_year: 2025, credential_url: '' });
-  const [newAchieve, setNewAchieve] = useState({ title: '', organization: '', year: 2026, description: '' });
 
   useEffect(() => {
     loadProfile();
@@ -54,19 +66,20 @@ export const StudentProfile = () => {
       setLoading(true);
       const data = await apiService.getStudentFullProfile();
       setProfile(data);
-      setFormData({
-        full_name: data.full_name || '',
-        phone: data.phone || '',
-        location: data.location || '',
-        program: data.program || 'B.Tech Computer Science & Engineering',
+      setFormData((prev) => ({
+        ...prev,
+        full_name: data.full_name || 'Aarav Sharma',
+        phone: data.phone || '+91 98765 43210',
+        location: data.location || 'Hauz Khas, New Delhi, Delhi 110016',
+        program: data.program || 'B.Tech Computer Science and Engineering',
         current_semester: data.current_semester || 6,
-        cgpa: data.cgpa || 8.5,
+        cgpa: data.cgpa || 8.45,
         career_interests: data.career_interests || [],
         education: data.education || [],
         projects: data.projects || [],
         certifications: data.certifications || [],
         achievements: data.achievements || [],
-      });
+      }));
     } catch (err) {
       showError('Failed to load student profile.');
     } finally {
@@ -88,318 +101,521 @@ export const StudentProfile = () => {
     }
   };
 
-  const addProject = () => {
-    if (!newProject.title) return;
-    const techs = newProject.technologies ? newProject.technologies.split(',').map((t) => t.trim()) : [];
-    const updated = [...formData.projects, { ...newProject, technologies: techs }];
-    setFormData({ ...formData, projects: updated });
-    setNewProject({ title: '', description: '', technologies: '', github_or_demo_url: '' });
+  // Helper for Circular SVG Skill Meter
+  const renderCircularMeter = (percentage) => {
+    const radius = 24;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="skill-meter-wrap">
+        <svg className="skill-meter-svg" viewBox="0 0 60 60">
+          <circle
+            className="skill-meter-bg"
+            cx="30"
+            cy="30"
+            r={radius}
+          />
+          <circle
+            className="skill-meter-fill"
+            cx="30"
+            cy="30"
+            r={radius}
+            style={{
+              strokeDasharray: circumference,
+              strokeDashoffset: strokeDashoffset,
+            }}
+          />
+        </svg>
+        <span className="skill-meter-text">{percentage}%</span>
+      </div>
+    );
   };
 
-  const removeProject = (idx) => {
-    const updated = formData.projects.filter((_, i) => i !== idx);
-    setFormData({ ...formData, projects: updated });
-  };
+  // Skills Snapshot data
+  const skillsSnapshot = [
+    { name: 'Programming', score: 85 },
+    { name: 'Data Structures', score: 78 },
+    { name: 'Web Development', score: 72 },
+    { name: 'Database', score: 68 },
+    { name: 'Problem Solving', score: 82 },
+    { name: 'Machine Learning', score: 65 },
+  ];
 
-  const addCertification = () => {
-    if (!newCert.name) return;
-    const updated = [...formData.certifications, { ...newCert, issue_year: parseInt(newCert.issue_year) || 2025 }];
-    setFormData({ ...formData, certifications: updated });
-    setNewCert({ name: '', issuer: '', issue_year: 2025, credential_url: '' });
-  };
+  // Achievements records
+  const defaultAchievements = [
+    {
+      icon: <Trophy size={18} color="#0d9488" />,
+      title: 'Winner – Smart India Hackathon 2024',
+      description: 'Secured 1st place in the national level SIH 2024 for problem statement in Smart Automation.',
+      date: 'Aug 2024',
+    },
+    {
+      icon: <Star size={18} color="#0d9488" />,
+      title: 'CodeChef 4★ Programmer',
+      description: 'Achieved 4-star rating on CodeChef platform with strong DSA problem solving skills.',
+      date: 'Jul 2024',
+    },
+    {
+      icon: <Award size={18} color="#0d9488" />,
+      title: "Dean's List – Top 10%",
+      description: 'Recognized in Dean\'s List for outstanding academic performance in 2023-24.',
+      date: 'May 2024',
+    },
+  ];
 
-  const removeCertification = (idx) => {
-    const updated = formData.certifications.filter((_, i) => i !== idx);
-    setFormData({ ...formData, certifications: updated });
-  };
+  // Certifications records
+  const defaultCertifications = [
+    {
+      badge: 'aws',
+      title: 'AWS Academy Cloud Foundations',
+      issuer: 'Amazon Web Services',
+      date: 'Mar 2024',
+      verified: true,
+    },
+    {
+      badge: 'nptel',
+      title: 'Data Structures and Algorithms',
+      issuer: 'NPTEL',
+      date: 'Jan 2024',
+      verified: true,
+    },
+    {
+      badge: 'google',
+      title: 'Google IT Automation with Python Professional Certificate',
+      issuer: 'Google Career Certificates',
+      date: 'Nov 2023',
+      verified: true,
+    },
+  ];
 
-  const addAchievement = () => {
-    if (!newAchieve.title) return;
-    const updated = [...formData.achievements, { ...newAchieve, year: parseInt(newAchieve.year) || 2026 }];
-    setFormData({ ...formData, achievements: updated });
-    setNewAchieve({ title: '', organization: '', year: 2026, description: '' });
-  };
-
-  const removeAchievement = (idx) => {
-    const updated = formData.achievements.filter((_, i) => i !== idx);
-    setFormData({ ...formData, achievements: updated });
+  // Provider logo renderer
+  const renderCertBadge = (badge) => {
+    if (badge === 'aws') {
+      return (
+        <div className="cert-logo-box" style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', color: '#ff9900' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#232f3e' }}>aws</span>
+        </div>
+      );
+    }
+    if (badge === 'nptel') {
+      return (
+        <div className="cert-logo-box" style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', color: '#d97706' }}>
+          <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#c2410c' }}>NPTEL</span>
+        </div>
+      );
+    }
+    return (
+      <div className="cert-logo-box" style={{ backgroundColor: '#fff', border: '1px solid #e2e8f0' }}>
+        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#4285f4' }}>Google</span>
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <Spinner size="lg" />
       </div>
     );
   }
 
+  const studentName = formData.full_name || profile?.full_name || 'Aarav Sharma';
+  const studentEmail = profile?.email || 'student@iitd.ac.in';
+  const initial = studentName.charAt(0).toUpperCase() || 'A';
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.9) 100%)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          padding: '1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div
-            style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-              fontWeight: 800,
-              color: '#ffffff',
-            }}
-          >
-            {profile?.full_name?.charAt(0) || 'S'}
+    <div className="profile-page-container">
+      {/* Background Decorative Technical Dot Grid */}
+      <div className="dot-grid-watermark" aria-hidden="true" />
+
+      {/* =========================================================================
+          1. PROFILE HERO HEADER CARD
+          ========================================================================= */}
+      <div className="profile-hero-card">
+        <div className="profile-hero-left">
+          <div className="profile-hero-avatar">
+            {initial}
           </div>
-          <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{profile?.full_name}</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{profile?.email}</span>
-              <Badge variant="success">
-                <CheckCircle2 size={12} style={{ marginRight: '4px' }} /> Verified Student
-              </Badge>
+          <div className="profile-hero-info">
+            <h1 className="profile-hero-name">{studentName}</h1>
+            <div className="profile-hero-email">{studentEmail}</div>
+            <div>
+              <span className="badge-skill-acquired" style={{ borderRadius: '9999px', padding: '3px 12px' }}>
+                <CheckCircle2 size={13} style={{ marginRight: '3px' }} /> Verified Student
+              </span>
             </div>
           </div>
         </div>
-        <Button onClick={handleSaveProfile} disabled={saving} variant="primary">
-          <Save size={16} /> {saving ? 'Saving...' : 'Save Profile Changes'}
-        </Button>
+
+        <button
+          type="button"
+          className="profile-save-btn"
+          onClick={handleSaveProfile}
+          disabled={saving}
+        >
+          <Save size={16} />
+          <span>{saving ? 'Saving Changes...' : 'Save Profile Changes'}</span>
+        </button>
       </div>
 
-      {/* Main Profile Form */}
-      <div className="grid-responsive grid-cols-3">
-        {/* Left Column: Academic & Protected Credentials */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <Card title="Institutional Affiliation" subtitle="Institutional and tenancy records">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Building2 size={14} /> Institution
-                </div>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
-                  {profile?.institution_name || 'IIT Delhi'}
-                </div>
-              </div>
+      {/* =========================================================================
+          2. TWO-COLUMN: PERSONAL INFORMATION & ACADEMIC METRICS
+          ========================================================================= */}
+      <div className="profile-split-grid">
+        {/* Left Column: Personal Information Card */}
+        <div className="profile-section-card">
+          <h2 className="profile-card-title">Personal Information</h2>
+          <div className="profile-teal-bar" />
 
-              <div style={{ padding: '0.875rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <GraduationCap size={14} /> Department
-                </div>
-                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
-                  {profile?.department_name || 'Computer Science & Engineering'}
-                </div>
+          <div className="profile-info-list">
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <User size={18} />
               </div>
-
-              <div
-                style={{
-                  padding: '0.75rem',
-                  background: '#fffbeb',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid #fde68a',
-                  fontSize: '0.75rem',
-                  color: '#b45309',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                <Lock size={16} />
-                <span>Role & Institutional affiliation are protected by security RLS and cannot be edited.</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card title="Academic Metrics">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <Input
-                label="Program / Degree"
-                value={formData.program}
-                onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-              />
-              <div className="grid-responsive grid-cols-2" style={{ gap: '0.75rem' }}>
-                <Input
-                  label="Current Semester"
-                  type="number"
-                  value={formData.current_semester}
-                  onChange={(e) => setFormData({ ...formData, current_semester: parseInt(e.target.value) || 1 })}
-                />
-                <Input
-                  label="Cumulative CGPA"
-                  type="number"
-                  step="0.01"
-                  value={formData.cgpa}
-                  onChange={(e) => setFormData({ ...formData, cgpa: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Center & Right Column: Personal Info, Projects, Certifications */}
-        <div style={{ gridColumn: 'span 2', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <Card title="Personal Information">
-            <div className="grid-responsive grid-cols-2" style={{ gap: '1rem' }}>
-              <Input
-                label="Full Name"
+              <span className="profile-field-label">Full Name</span>
+              <span className="profile-field-sep">:</span>
+              <input
+                type="text"
+                className="profile-input-field"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                placeholder="Full Name"
               />
-              <Input
-                label="Phone Number"
+            </div>
+
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <Mail size={18} />
+              </div>
+              <span className="profile-field-label">Email Address</span>
+              <span className="profile-field-sep">:</span>
+              <span className="profile-field-value">{studentEmail}</span>
+            </div>
+
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <Phone size={18} />
+              </div>
+              <span className="profile-field-label">Phone Number</span>
+              <span className="profile-field-sep">:</span>
+              <input
+                type="text"
+                className="profile-input-field"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-              <Input
-                label="Current Location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              />
-              <Input
-                label="Registered Email (Immutable)"
-                value={profile?.email || ''}
-                disabled
+                placeholder="+91 XXXXX XXXXX"
               />
             </div>
-          </Card>
 
-          {/* Projects Section */}
-          <Card title="Projects & Engineering Portfolios" subtitle="Showcase verified work for recruiter evaluation">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {formData.projects.map((proj, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '1rem',
-                    background: '#f8fafc',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{proj.title}</div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{proj.description}</div>
-                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                      {proj.technologies?.map((tech, i) => (
-                        <span key={i} style={{ fontSize: '0.75rem', background: '#ccfbf1', color: '#0f766e', padding: '2px 8px', borderRadius: '4px', fontWeight: 500 }}>
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => removeProject(idx)}
-                    style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-
-              {/* Add Project inline form */}
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px dashed #cbd5e1' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0d9488', marginBottom: '0.75rem' }}>Add New Project</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <Input placeholder="Project Title" value={newProject.title} onChange={(e) => setNewProject({ ...newProject, title: e.target.value })} />
-                  <Input placeholder="Description & Impact" value={newProject.description} onChange={(e) => setNewProject({ ...newProject, description: e.target.value })} />
-                  <Input placeholder="Technologies (comma-separated e.g. React, Python, RLS)" value={newProject.technologies} onChange={(e) => setNewProject({ ...newProject, technologies: e.target.value })} />
-                  <Button type="button" variant="secondary" size="sm" onClick={addProject}>
-                    <Plus size={14} /> Add Project
-                  </Button>
-                </div>
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <Calendar size={18} />
               </div>
+              <span className="profile-field-label">Date of Birth</span>
+              <span className="profile-field-sep">:</span>
+              <input
+                type="text"
+                className="profile-input-field"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                placeholder="12 Aug 2004"
+              />
             </div>
-          </Card>
 
-          {/* Certifications & Achievements */}
-          <div className="grid-responsive grid-cols-2" style={{ gap: '1.5rem' }}>
-            <Card title="Certifications">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {formData.certifications.map((c, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0' }}>
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{c.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.issuer} ({c.issue_year})</div>
-                    </div>
-                    <button onClick={() => removeCertification(i)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <input
-                    type="text"
-                    placeholder="Certificate Name"
-                    value={newCert.name}
-                    onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Issuer"
-                    value={newCert.issuer}
-                    onChange={(e) => setNewCert({ ...newCert, issuer: e.target.value })}
-                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
-                  />
-                  <Button type="button" variant="secondary" size="sm" onClick={addCertification}>
-                    <Plus size={12} />
-                  </Button>
-                </div>
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <UserCheck size={18} />
               </div>
-            </Card>
+              <span className="profile-field-label">Gender</span>
+              <span className="profile-field-sep">:</span>
+              <input
+                type="text"
+                className="profile-input-field"
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                placeholder="Male / Female / Other"
+              />
+            </div>
 
-            <Card title="Achievements & Honors">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {formData.achievements.map((a, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #e2e8f0' }}>
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{a.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{a.organization} ({a.year})</div>
-                    </div>
-                    <button onClick={() => removeAchievement(i)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <input
-                    type="text"
-                    placeholder="Achievement Title"
-                    value={newAchieve.title}
-                    onChange={(e) => setNewAchieve({ ...newAchieve, title: e.target.value })}
-                    style={{ flex: 1, padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Org"
-                    value={newAchieve.organization}
-                    onChange={(e) => setNewAchieve({ ...newAchieve, organization: e.target.value })}
-                    style={{ width: '90px', padding: '0.4rem 0.6rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', color: 'var(--text-primary)', fontSize: '0.8rem' }}
-                  />
-                  <Button type="button" variant="secondary" size="sm" onClick={addAchievement}>
-                    <Plus size={12} />
-                  </Button>
-                </div>
+            <div className="profile-info-row">
+              <div className="profile-icon-box">
+                <Flag size={18} />
               </div>
-            </Card>
+              <span className="profile-field-label">Nationality</span>
+              <span className="profile-field-sep">:</span>
+              <input
+                type="text"
+                className="profile-input-field"
+                value={formData.nationality}
+                onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                placeholder="Indian"
+              />
+            </div>
           </div>
+        </div>
+
+        {/* Right Column: Academic Metrics Card */}
+        <div className="profile-section-card">
+          <h2 className="profile-card-title">Academic Metrics</h2>
+          <div className="profile-teal-bar" />
+
+          <div className="academic-grid">
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <GraduationCap size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">Program / Degree</div>
+                <div className="academic-tile-val" title={formData.program}>
+                  {formData.program}
+                </div>
+              </div>
+            </div>
+
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <Calendar size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">Year of Study</div>
+                <div className="academic-tile-val">3rd Year</div>
+              </div>
+            </div>
+
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <FileText size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">Enrollment Number</div>
+                <div className="academic-tile-val">2023CS12345</div>
+              </div>
+            </div>
+
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <TrendingUp size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">CGPA / Percentage</div>
+                <div className="academic-tile-val">{formData.cgpa} / 10</div>
+              </div>
+            </div>
+
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <Layers size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">Section / Batch</div>
+                <div className="academic-tile-val">{formData.section_batch}</div>
+              </div>
+            </div>
+
+            <div className="academic-tile">
+              <div className="profile-icon-box">
+                <Award size={18} />
+              </div>
+              <div className="academic-tile-info">
+                <div className="academic-tile-label">Expected Graduation</div>
+                <div className="academic-tile-val">{formData.expected_graduation}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          3. FULL-WIDTH SECURITY NOTICE
+          ========================================================================= */}
+      <div className="profile-security-notice">
+        <Lock size={16} />
+        <span>Role & Institutional affiliation are protected by security RLS and cannot be edited.</span>
+      </div>
+
+      {/* =========================================================================
+          4. SKILLS SNAPSHOT
+          ========================================================================= */}
+      <div>
+        <div className="sb-section-header" style={{ marginBottom: '0.85rem' }}>
+          <div className="sb-section-title-wrap">
+            <h2 className="sb-section-title" style={{ fontSize: '1.25rem' }}>
+              Skills Snapshot
+            </h2>
+            <div className="profile-teal-bar" style={{ marginBottom: 0 }} />
+          </div>
+        </div>
+
+        <div className="skills-snapshot-grid">
+          {skillsSnapshot.map((skill, idx) => (
+            <div key={idx} className="skill-circle-card">
+              <span className="skill-circle-name">{skill.name}</span>
+              {renderCircularMeter(skill.score)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          5. ACHIEVEMENTS & CERTIFICATIONS (2 COLUMNS)
+          ========================================================================= */}
+      <div className="profile-split-grid">
+        {/* Achievements */}
+        <div className="profile-section-card">
+          <h2 className="profile-card-title">Achievements</h2>
+          <div className="profile-teal-bar" />
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {defaultAchievements.map((item, idx) => (
+              <div key={idx} className="achieve-item">
+                <div className="profile-icon-box">
+                  {item.icon}
+                </div>
+                <div className="achieve-info">
+                  <div className="achieve-title">{item.title}</div>
+                  <div className="achieve-desc">{item.description}</div>
+                </div>
+                <div className="achieve-date">{item.date}</div>
+              </div>
+            ))}
+          </div>
+
+          <Link to="/dashboard/student/skills" className="card-bottom-link">
+            View All Achievements &rarr;
+          </Link>
+        </div>
+
+        {/* Certifications */}
+        <div className="profile-section-card">
+          <h2 className="profile-card-title">Certifications</h2>
+          <div className="profile-teal-bar" />
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {defaultCertifications.map((item, idx) => (
+              <div key={idx} className="cert-item">
+                {renderCertBadge(item.badge)}
+                <div className="achieve-info">
+                  <div className="cert-title">{item.title}</div>
+                  <div className="cert-org">{item.issuer}</div>
+                </div>
+                <div className="cert-date">{item.date}</div>
+                <div className="cert-check">
+                  <CheckCircle2 size={16} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Link to="/dashboard/student/learning" className="card-bottom-link">
+            View All Certifications &rarr;
+          </Link>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          6. CONTACT INFORMATION
+          ========================================================================= */}
+      <div>
+        <div className="sb-section-header" style={{ marginBottom: '0.85rem' }}>
+          <div className="sb-section-title-wrap">
+            <h2 className="sb-section-title" style={{ fontSize: '1.25rem' }}>
+              Contact Information
+            </h2>
+            <div className="profile-teal-bar" style={{ marginBottom: 0 }} />
+          </div>
+        </div>
+
+        <div className="contact-grid">
+          <div className="contact-tile">
+            <div className="profile-icon-box">
+              <Mail size={18} />
+            </div>
+            <div className="contact-tile-info">
+              <div className="contact-label">Email Address</div>
+              <div className="contact-value" title={studentEmail}>{studentEmail}</div>
+            </div>
+          </div>
+
+          <div className="contact-tile">
+            <div className="profile-icon-box">
+              <Phone size={18} />
+            </div>
+            <div className="contact-tile-info">
+              <div className="contact-label">Phone Number</div>
+              <div className="contact-value">{formData.phone}</div>
+            </div>
+          </div>
+
+          <div className="contact-tile">
+            <div className="profile-icon-box">
+              <MapPin size={18} />
+            </div>
+            <div className="contact-tile-info">
+              <div className="contact-label">Current Address</div>
+              <div className="contact-value" title={formData.location}>{formData.location}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          7. QUICK LINKS
+          ========================================================================= */}
+      <div>
+        <div className="sb-section-header" style={{ marginBottom: '0.85rem' }}>
+          <div className="sb-section-title-wrap">
+            <h2 className="sb-section-title" style={{ fontSize: '1.25rem' }}>
+              Quick Links
+            </h2>
+            <div className="profile-teal-bar" style={{ marginBottom: 0 }} />
+          </div>
+        </div>
+
+        <div className="quick-links-grid">
+          <Link to="/dashboard/student/resume" className="quick-link-card">
+            <div>
+              <div className="profile-icon-box">
+                <FileText size={18} />
+              </div>
+              <div className="quick-link-title">Resume Builder</div>
+              <div className="quick-link-desc">Update your resume</div>
+            </div>
+            <ArrowRight size={16} className="quick-link-arrow" />
+          </Link>
+
+          <Link to="/dashboard/student/assessments" className="quick-link-card">
+            <div>
+              <div className="profile-icon-box">
+                <Brain size={18} />
+              </div>
+              <div className="quick-link-title">Skill Assessment</div>
+              <div className="quick-link-desc">Take skill assessment</div>
+            </div>
+            <ArrowRight size={16} className="quick-link-arrow" />
+          </Link>
+
+          <Link to="/dashboard/student/applications" className="quick-link-card">
+            <div>
+              <div className="profile-icon-box">
+                <FileCheck2 size={18} />
+              </div>
+              <div className="quick-link-title">My Applications</div>
+              <div className="quick-link-desc">Track your applications</div>
+            </div>
+            <ArrowRight size={16} className="quick-link-arrow" />
+          </Link>
+
+          <Link to="/dashboard/student/learning" className="quick-link-card">
+            <div>
+              <div className="profile-icon-box">
+                <BookOpen size={18} />
+              </div>
+              <div className="quick-link-title">Learning Dashboard</div>
+              <div className="quick-link-desc">Continue learning</div>
+            </div>
+            <ArrowRight size={16} className="quick-link-arrow" />
+          </Link>
         </div>
       </div>
     </div>

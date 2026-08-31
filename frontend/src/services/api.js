@@ -471,4 +471,39 @@ export const apiService = {
     const res = await apiClient.get('/admin/national-skills');
     return res.data;
   },
+
+  // AI Interview Simulator Methods (Technical, HR, Custom)
+  startInterview: async (payload) => {
+    const res = await apiClient.post('/interviews/start', payload);
+    return res.data;
+  },
+
+  getInterviewSession: async (interviewId) => {
+    const res = await apiClient.get(`/interviews/${interviewId}`);
+    return res.data;
+  },
+
+  submitInterviewAnswer: async (interviewId, questionId, answerText) => {
+    const res = await apiClient.post(`/interviews/${interviewId}/answer`, {
+      question_id: questionId,
+      answer_text: answerText,
+    });
+    return res.data;
+  },
+
+  completeInterview: async (interviewId) => {
+    const res = await apiClient.post(`/interviews/${interviewId}/complete`);
+    return res.data;
+  },
+
+  getInterviewReport: async (interviewId) => {
+    const res = await apiClient.get(`/interviews/${interviewId}/report`);
+    return res.data;
+  },
+
+  getInterviewHistory: async () => {
+    const res = await apiClient.get('/interviews/history');
+    return res.data;
+  },
 };
+

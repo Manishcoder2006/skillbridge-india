@@ -1,10 +1,11 @@
 import React from 'react';
-import { Menu, Building, Shield, Bell, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Menu, Building, Shield } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Badge } from '../common/Badge';
 
 export const Header = ({ toggleMobileMenu }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role } = useAuth();
 
   const getTenantDisplay = () => {
     if (role === 'super_admin') {
@@ -31,6 +32,19 @@ export const Header = ({ toggleMobileMenu }) => {
     );
   };
 
+  const getProfileRoute = () => {
+    switch (role) {
+      case 'student':
+        return '/dashboard/student/profile';
+      case 'academician':
+        return '/dashboard/academician/profile';
+      case 'industry_hr':
+        return '/dashboard/industry/profile';
+      default:
+        return '/dashboard/student/profile';
+    }
+  };
+
   return (
     <header className="top-header">
       <div className="header-left">
@@ -55,15 +69,17 @@ export const Header = ({ toggleMobileMenu }) => {
         {user?.role && <Badge role={user.role} />}
         {user?.verification_status && <Badge status={user.verification_status} />}
 
-        <div className="user-profile-menu">
+        {/* Small circular profile avatar in top-right as direct navigation trigger to My Profile */}
+        <Link
+          to={getProfileRoute()}
+          className="user-avatar-link"
+          aria-label="View My Profile"
+          title="View My Profile"
+        >
           <div className="user-avatar">
             {user?.full_name?.charAt(0) || 'U'}
           </div>
-          <div style={{ display: 'none', flexDirection: 'column' }} className="user-info-desktop">
-            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user?.full_name}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user?.email}</span>
-          </div>
-        </div>
+        </Link>
       </div>
     </header>
   );

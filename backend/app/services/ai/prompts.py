@@ -232,3 +232,108 @@ Generate a JSON object with:
     "Partner with industry for live database indexing hackathons."
   ]
 }}"""
+
+    @staticmethod
+    def interview_questions_generate_prompt(
+        role: str,
+        interview_type: str,
+        experience_level: str,
+        skills: List[str],
+        num_questions: int,
+        resume_summary: Optional[str] = None,
+        job_description: Optional[str] = None,
+        custom_instructions: Optional[str] = None
+    ) -> str:
+        skills_str = ", ".join(skills) if skills else "Core domain skills"
+        resume_ctx = f"\nCandidate Verified Resume Context:\n{resume_summary}" if resume_summary else ""
+        jd_ctx = f"\nTarget Job Description:\n{job_description}" if job_description else ""
+        custom_ctx = f"\nCustom Instructions:\n{custom_instructions}" if custom_instructions else ""
+
+        return f"""You are the SkillBridge India Elite AI Interviewer (SIH 2026).
+Generate exactly {num_questions} realistic, highly tailored interview questions for:
+Target Role: {role}
+Interview Mode: {interview_type.upper()} (Technical, HR, or Custom)
+Experience Level: {experience_level}
+Key Skills: {skills_str}{resume_ctx}{jd_ctx}{custom_ctx}
+
+Guidelines:
+- Technical mode: Focus on architectural depth, data structures & algorithms, real-world coding decisions, framework mechanics, debugging, and system design.
+- HR mode: Focus on behavioral STAR-method scenarios, teamwork, workplace conflicts, ethics, career vision, strengths, and communication.
+- Custom mode: Strictly adhere to the requested focus, skills, and custom instructions.
+- Ensure questions are progressively challenging and realistic for Indian technology campuses and industry recruitment standards.
+
+Respond in strict JSON with the following structure:
+{{
+  "questions": [
+    {{
+      "id": "q-1",
+      "question_number": 1,
+      "question_text": "<Detailed, conversational, professional interview question>",
+      "category": "<Category e.g. Algorithms / Databases / Behavioral / System Design>",
+      "difficulty": "beginner|intermediate|advanced",
+      "hint": "<A short helpful guidance tip or thought framework for the student>",
+      "evaluation_criteria": ["<Key concept 1>", "<Key concept 2>", "<Key concept 3>"]
+    }}
+  ]
+}}"""
+
+    @staticmethod
+    def interview_answer_evaluation_prompt(
+        role: str,
+        question_text: str,
+        category: str,
+        answer_text: str,
+        evaluation_criteria: List[str]
+    ) -> str:
+        criteria_str = ", ".join(evaluation_criteria) if evaluation_criteria else "Correctness, technical depth, clarity"
+
+        return f"""You are an expert technical and HR interviewer evaluating a student candidate's response.
+Role: {role}
+Category: {category}
+Question: {question_text}
+Evaluation Criteria: {criteria_str}
+
+Candidate's Submitted Answer:
+"{answer_text}"
+
+Evaluate the answer objectively on technical correctness, conceptual depth, structure, communication, and completeness.
+Generate a valid JSON object with:
+{{
+  "score": <integer from 0 to 10 based on quality and accuracy>,
+  "strengths": [<2-3 specific strong points of their response>],
+  "improvements": [<1-2 constructive, actionable points for improvement or missing depth>],
+  "suggested_answer_points": [<2-3 key insights or best practices an ideal candidate would mention>]
+}}"""
+
+    @staticmethod
+    def interview_final_report_prompt(
+        role: str,
+        interview_type: str,
+        evaluations_summary: List[Dict[str, Any]]
+    ) -> str:
+        eval_json_str = str(evaluations_summary)
+
+        return f"""You are the SkillBridge India Senior AI Interview Evaluator.
+Synthesize a comprehensive final performance evaluation for a completed {interview_type.upper()} interview for role '{role}'.
+
+Question Responses & Scores Summary:
+{eval_json_str}
+
+Generate a comprehensive JSON evaluation report:
+{{
+  "overall_score": <integer 0-100>,
+  "category_scores": [
+    {{"category": "Technical Depth", "score": <0-100>}},
+    {{"category": "Communication", "score": <0-100>}},
+    {{"category": "Problem Solving", "score": <0-100>}},
+    {{"category": "Role Relevance", "score": <0-100>}}
+  ],
+  "strengths": [<3-4 major standout capabilities demonstrated across the interview>],
+  "weaknesses": [<2-3 specific areas where the candidate lacked depth or structure>],
+  "questions_answered_well": [<1-2 specific question topics where candidate scored highest>],
+  "questions_needing_improvement": [<1-2 question topics requiring further study>],
+  "personalized_recommendations": [<2-3 specific pedagogical action items>],
+  "suggested_skills_to_practice": [<3-4 specific technical or behavioral skills to upskill>],
+  "recommended_next_steps": [<2-3 immediate next steps on SkillBridge India portal>]
+}}"""
+
