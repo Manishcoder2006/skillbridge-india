@@ -24,8 +24,11 @@ export const AuthProvider = ({ children }) => {
               localStorage.setItem('sb_auth_token', activeSession.access_token);
               // Fetch verified user profile
               const profile = await apiService.getProfile();
-              setUser(profile);
-              return;
+              if (profile) {
+                localStorage.setItem('sb_user_profile', JSON.stringify(profile));
+                setUser(profile);
+                return;
+              }
             }
           } catch (supaInitErr) {
             console.warn('Supabase session getSession error, falling back to local storage:', supaInitErr);
@@ -60,7 +63,10 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('sb_auth_token', currentSession.access_token);
           try {
             const profile = await apiService.getProfile();
-            setUser(profile);
+            if (profile) {
+              localStorage.setItem('sb_user_profile', JSON.stringify(profile));
+              setUser(profile);
+            }
           } catch (e) {
             console.error('Failed to sync profile after auth change:', e);
           }
@@ -92,6 +98,7 @@ export const AuthProvider = ({ children }) => {
           setSession(data.session);
           localStorage.setItem('sb_auth_token', data.session.access_token);
           const profile = await apiService.getProfile();
+          localStorage.setItem('sb_user_profile', JSON.stringify(profile));
           setUser(profile);
           return profile;
         } catch (supaErr) {
