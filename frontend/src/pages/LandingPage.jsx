@@ -35,7 +35,7 @@ export const LandingPage = () => {
         style={{
           backgroundColor: '#071019',
           color: '#cbd5e1',
-          padding: '0.45rem 2rem',
+          padding: '0.45rem clamp(1rem, 3vw, 2rem)',
           fontSize: '0.75rem',
           display: 'flex',
           justifyContent: 'space-between',
@@ -45,13 +45,13 @@ export const LandingPage = () => {
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ color: '#20B8A6', fontWeight: 800 }}>SIH 2026</span>
-          <span style={{ opacity: 0.5 }}>•</span>
-          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>Problem Statement 26044</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.04em', flexWrap: 'wrap' }}>
+          <span style={{ color: '#20B8A6', fontWeight: 800 }}>SKILLBRIDGE INDIA</span>
+          <span style={{ opacity: 0.5, color: '#94a3b8' }}>•</span>
+          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>CONNECTING TALENT WITH OPPORTUNITY</span>
         </div>
-        <div style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
-          Ministry of Education / AICTE Collaboration Initiative
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em' }}>
+          STUDENTS &nbsp;•&nbsp; ACADEMIA &nbsp;•&nbsp; INDUSTRY
         </div>
       </div>
 
@@ -60,7 +60,7 @@ export const LandingPage = () => {
         style={{
           backgroundColor: '#ffffff',
           borderBottom: '1px solid #e2e8f0',
-          padding: '0.9rem 2.5rem',
+          padding: '0.85rem clamp(1rem, 3.5vw, 2.5rem)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -74,11 +74,11 @@ export const LandingPage = () => {
         <Logo size="md" theme="light" />
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <Link
             to="/login"
             style={{
-              padding: '0.5rem 1.1rem',
+              padding: '0.45rem 0.95rem',
               borderRadius: '8px',
               border: '1px solid #cbd5e1',
               backgroundColor: '#ffffff',
@@ -94,7 +94,7 @@ export const LandingPage = () => {
           <Link
             to="/register"
             style={{
-              padding: '0.5rem 1.25rem',
+              padding: '0.45rem 1.1rem',
               borderRadius: '8px',
               backgroundColor: '#071019',
               color: '#ffffff',
@@ -102,13 +102,13 @@ export const LandingPage = () => {
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.4rem',
+              gap: '0.35rem',
               textDecoration: 'none',
               transition: 'all 0.15s ease',
               boxShadow: '0 2px 8px rgba(7, 16, 25, 0.2)',
             }}
           >
-            <ArrowRight size={15} /> Register
+            <ArrowRight size={14} /> Register
           </Link>
         </div>
       </header>
@@ -116,7 +116,7 @@ export const LandingPage = () => {
       {/* 3. Hero Section (Matching Reference Design) */}
       <section
         style={{
-          padding: '3.5rem 2.5rem 4rem',
+          padding: '3rem clamp(1rem, 3.5vw, 2.5rem) 3.5rem',
           backgroundColor: '#F5F6F4',
           borderBottom: '1px solid #e2e8f0',
           position: 'relative',
@@ -128,9 +128,9 @@ export const LandingPage = () => {
             maxWidth: '1280px',
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))',
             alignItems: 'center',
-            gap: '3rem',
+            gap: '2.5rem',
           }}
         >
           {/* Left Text Column */}

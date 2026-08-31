@@ -216,7 +216,7 @@ export const StudentAnalytics = () => {
       </div>
 
       {/* Main Analytics Grid: Placement Readiness Tiers & Top Skills */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '1.5rem' }}>
         {/* Industry Placement Readiness Distribution */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
@@ -233,13 +233,12 @@ export const StudentAnalytics = () => {
                 <span style={{ fontWeight: 600, color: '#10b981' }}>High Placement Ready (70%+ Score)</span>
                 <strong>{readiness_distribution.high_readiness || 0} Students</strong>
               </div>
-              <div style={{ height: '10px', background: 'var(--color-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
-                    width: `${total_students > 0 ? ((readiness_distribution.high_readiness || 0) / total_students) * 100 : 0}%`,
                     height: '100%',
                     background: '#10b981',
-                    borderRadius: '6px',
+                    width: total_students > 0 ? `${((readiness_distribution.high_readiness || 0) / total_students) * 100}%` : '0%',
                   }}
                 />
               </div>
@@ -248,100 +247,85 @@ export const StudentAnalytics = () => {
             {/* Moderate Readiness */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 600, color: '#f59e0b' }}>Developing Skills (40% - 69% Score)</span>
+                <span style={{ fontWeight: 600, color: '#f59e0b' }}>Moderate Ready (40-70% Score)</span>
                 <strong>{readiness_distribution.moderate_readiness || 0} Students</strong>
               </div>
-              <div style={{ height: '10px', background: 'var(--color-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
-                    width: `${total_students > 0 ? ((readiness_distribution.moderate_readiness || 0) / total_students) * 100 : 0}%`,
                     height: '100%',
                     background: '#f59e0b',
-                    borderRadius: '6px',
+                    width: total_students > 0 ? `${((readiness_distribution.moderate_readiness || 0) / total_students) * 100}%` : '0%',
                   }}
                 />
               </div>
             </div>
 
-            {/* Early Stage */}
+            {/* Critical Upskilling Needed */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 600, color: '#ef4444' }}>Early Stage / Needs Mentorship (&lt;40% Score)</span>
-                <strong>{readiness_distribution.early_stage || 0} Students</strong>
+                <span style={{ fontWeight: 600, color: '#ef4444' }}>Critical Skill Gaps (&lt;40% Score)</span>
+                <strong>{readiness_distribution.needs_improvement || 0} Students</strong>
               </div>
-              <div style={{ height: '10px', background: 'var(--color-bg)', borderRadius: '6px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
-                    width: `${total_students > 0 ? ((readiness_distribution.early_stage || 0) / total_students) * 100 : 0}%`,
                     height: '100%',
                     background: '#ef4444',
-                    borderRadius: '6px',
+                    width: total_students > 0 ? `${((readiness_distribution.needs_improvement || 0) / total_students) * 100}%` : '0%',
                   }}
                 />
               </div>
             </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              borderRadius: '8px',
-              background: 'rgba(37, 99, 235, 0.05)',
-              border: '1px solid rgba(37, 99, 235, 0.15)',
-              fontSize: '0.82rem',
-              color: 'var(--color-text-muted)',
-              lineHeight: 1.5,
-            }}
-          >
-            💡 <strong>Faculty Recommendation:</strong> Schedule targeted skill refresher sessions for the {readiness_distribution.moderate_readiness || 0} students in the developing tier to boost placement conversion.
           </div>
         </Card>
 
-        {/* Top Verified Skills */}
+        {/* Top Department Skills */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <CheckCircle2 size={18} color="#10b981" />
+            <Award size={18} color="var(--color-primary)" />
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
-              Top Verified Skills in Department
+              Top Cohort Competencies
             </h3>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {top_verified_skills.map((sk, i) => (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {top_department_skills.map((skill, i) => (
               <div
                 key={i}
                 style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  background: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div
                     style={{
-                      width: '24px',
-                      height: '24px',
+                      width: '28px',
+                      height: '28px',
                       borderRadius: '50%',
-                      background: 'rgba(16, 185, 129, 0.15)',
-                      color: '#10b981',
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      color: 'var(--color-primary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '0.75rem',
                       fontWeight: 700,
+                      fontSize: '0.8rem',
                     }}
                   >
-                    #{i + 1}
-                  </span>
-                  <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{sk.skill}</span>
+                    {i + 1}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{skill.skill_name}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Verified across {skill.verified_count || 0} students</div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{sk.count} Students Verified</span>
+                <div style={{ textAlign: 'right' }}>
                   <Badge variant="success">Active</Badge>
                 </div>
               </div>
@@ -351,7 +335,7 @@ export const StudentAnalytics = () => {
       </div>
 
       {/* Second Row: Critical Skill Gaps & Semester Distribution */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '1.5rem' }}>
         {/* Critical Skill Gaps */}
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
@@ -369,7 +353,7 @@ export const StudentAnalytics = () => {
                   padding: '0.85rem 1rem',
                   borderRadius: '8px',
                   background: 'rgba(239, 68, 68, 0.04)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  border: '1px solid rgba(239, 68, 68, 0.15)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -396,7 +380,7 @@ export const StudentAnalytics = () => {
             </h3>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
             {Object.entries(semester_distribution).map(([sem, count]) => (
               <div
                 key={sem}

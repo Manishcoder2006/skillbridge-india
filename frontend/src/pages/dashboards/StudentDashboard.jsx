@@ -83,7 +83,7 @@ export const StudentDashboard = () => {
 
       {/* Profile Overview Card */}
       <Card title="Student Profile Overview (Phase 1 Foundation)">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1rem' }}>
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Full Name</span>
             <div style={{ fontWeight: 600 }}>{user?.full_name}</div>

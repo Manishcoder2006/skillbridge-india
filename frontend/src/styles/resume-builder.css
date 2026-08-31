@@ -883,3 +883,44 @@
     display: none;
   }
 }
+
+@media (max-width: 640px) {
+  .rb-wizard-card {
+    padding: 20px 14px;
+    border-radius: 16px;
+  }
+
+  .rb-modal-card {
+    padding: 18px 14px;
+    border-radius: 16px;
+    max-height: 94vh;
+  }
+
+  .rb-modal-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .rb-modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rb-btn-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .rb-stepper-row {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+
+  .rb-step-item {
+    flex-shrink: 0;
+  }
+}

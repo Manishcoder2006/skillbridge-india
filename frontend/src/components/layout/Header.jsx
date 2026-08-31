@@ -49,14 +49,9 @@ export const Header = ({ toggleMobileMenu }) => {
     <header className="top-header">
       <div className="header-left">
         <button
+          type="button"
           onClick={toggleMobileMenu}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--primary-700)',
-            cursor: 'pointer',
-            padding: '0.25rem',
-          }}
+          className="mobile-menu-btn"
           aria-label="Toggle navigation menu"
         >
           <Menu size={22} />

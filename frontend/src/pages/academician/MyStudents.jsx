@@ -194,7 +194,7 @@ export const MyStudents = () => {
           </p>
         </Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '1.25rem' }}>
           {filteredStudents.map((st) => {
             const hasGaps = st.skill_gaps && st.skill_gaps.length > 0;
             const isAttention = st.latest_assessment_score < 70;

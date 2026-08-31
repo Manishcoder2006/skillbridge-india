@@ -115,7 +115,7 @@ export const InterviewSetup = ({
         className="grid-responsive"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(300px, 1fr) minmax(360px, 1.4fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
           gap: '1.75rem',
           alignItems: 'start',
         }}

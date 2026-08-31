@@ -83,7 +83,7 @@ export const IndustryDashboard = () => {
 
       {/* Overview Card */}
       <Card title="Corporate Profile & Outreach Status">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '1rem' }}>
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Corporate Representative</span>
             <div style={{ fontWeight: 600 }}>{user?.full_name}</div>

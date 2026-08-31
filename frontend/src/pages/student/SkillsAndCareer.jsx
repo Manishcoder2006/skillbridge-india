@@ -414,7 +414,7 @@ export const SkillsAndCareer = () => {
             className="grid-responsive"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
               gap: '1.25rem',
             }}
           >
@@ -866,7 +866,7 @@ export const SkillsAndCareer = () => {
           {/* Add New Skill Card */}
           <Card title="Add Skill to Competency Matrix">
             <form onSubmit={handleAddSkill} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: 2, minWidth: '200px' }}>
+              <div style={{ flex: '2 1 200px', minWidth: 'min(100%, 200px)' }}>
                 <Input
                   label="Skill Name"
                   placeholder="e.g. Docker, TypeScript, System Design"
@@ -875,7 +875,7 @@ export const SkillsAndCareer = () => {
                   required
                 />
               </div>
-              <div style={{ flex: 1, minWidth: '150px' }}>
+              <div style={{ flex: '1 1 140px', minWidth: 'min(100%, 140px)' }}>
                 <Select
                   label="Category"
                   value={newSkill.category}
@@ -886,7 +886,7 @@ export const SkillsAndCareer = () => {
                   ]}
                 />
               </div>
-              <div style={{ flex: 1, minWidth: '150px' }}>
+              <div style={{ flex: '1 1 140px', minWidth: 'min(100%, 140px)' }}>
                 <Select
                   label="Proficiency Level"
                   value={newSkill.proficiency_level}
@@ -899,7 +899,7 @@ export const SkillsAndCareer = () => {
                   ]}
                 />
               </div>
-              <Button type="submit" disabled={addingSkill} variant="primary">
+              <Button type="submit" disabled={addingSkill} variant="primary" style={{ minHeight: '42px' }}>
                 <Plus size={16} /> Add Skill
               </Button>
             </form>

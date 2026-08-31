@@ -71,6 +71,13 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   font-family: var(--font-family);
   background-color: var(--bg-page);
@@ -80,11 +87,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading);
   color: var(--text-primary);
   font-weight: 700;
   line-height: 1.25;
+  word-break: break-word;
 }
 
 ::placeholder {
@@ -100,6 +113,69 @@ a {
 
 a:hover {
   color: var(--primary-900);
+}
+
+/* --------------------------------------------------------------------------
+   Universal Responsive Grid Utilities
+   -------------------------------------------------------------------------- */
+.grid-responsive {
+  display: grid;
+  width: 100%;
+}
+
+.grid-cols-1 { grid-template-columns: 1fr; }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-cols-6 { grid-template-columns: repeat(6, 1fr); }
+
+@media (max-width: 1024px) {
+  .grid-cols-6 { grid-template-columns: repeat(3, 1fr); }
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+  .grid-cols-6,
+  .grid-cols-4,
+  .grid-cols-3,
+  .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Universal Table Responsiveness
+   -------------------------------------------------------------------------- */
+.table-responsive,
+.overflow-x-auto,
+.overflow-x-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 0.5rem;
+}
+
+.table-responsive table,
+.overflow-x-auto table,
+table.table,
+table.w-full {
+  min-width: 580px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+@media (max-width: 640px) {
+  .table-responsive table,
+  .overflow-x-auto table,
+  table.table,
+  table.w-full {
+    min-width: 520px;
+  }
 }
 
 /* --------------------------------------------------------------------------
