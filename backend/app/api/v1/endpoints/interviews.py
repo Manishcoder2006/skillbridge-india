@@ -27,6 +27,9 @@ async def start_interview(
     user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
     try:
         return await ai_orchestrator.start_interview_session(user_id=user_id, payload=payload)
+    except HTTPException as http_exc:
+        # Preserve original status code (e.g., 503 when both providers fail)
+        raise http_exc
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -49,11 +52,17 @@ async def get_interview_session(
     current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
 ):
     """Retrieves an active or completed interview session."""
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
     session = interview_repo.get_session(interview_id)
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Interview session not found."
+        )
+    if session.get("user_id") != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized access to interview session."
         )
     return session
 
