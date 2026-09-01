@@ -1,7 +1,8 @@
-import logging
+import uuid
 import jwt
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
+import logging
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import settings
@@ -142,11 +143,32 @@ async def get_current_user(
             return AuthenticatedUser(persisted or fallback_profile)
 
     # 3. Explicit Demo / Test Role Tokens
-    if token.startswith("demo_token_") or token.startswith("test_token_") or token.startswith("mock_token_"):
-        requested_role = token.split("_", 2)[-1]
-        for profile in MOCK_DATA_STORE["profiles"]:
-            if profile.get("role") == requested_role:
-                return AuthenticatedUser(profile)
+    # Demo/Test/Mock token handling (case‑insensitive)
+    token_lower = token.lower()
+    if token_lower.startswith("demo_token_") or token_lower.startswith("test_token_") or token_lower.startswith("mock_token_"):
+        # Extract role from the token (case‑insensitive)
+        requested_role = token_lower.split("_", 2)[-1]
+        # Search for an existing mock profile with this role
+        seed_profile = next((p for p in MOCK_DATA_STORE["profiles"] if p.get("role") == requested_role), None)
+        if seed_profile:
+            # Return the existing seed profile directly (no synthetic email)
+            return AuthenticatedUser(seed_profile)
+        # Fallback: create a synthetic demo profile if no seed exists
+        demo_profile = {
+            "id": f"demo-{requested_role}-{uuid.uuid4()}",
+            "email": f"{requested_role}@demo.example.com",
+            "full_name": f"Demo {requested_role.title()}",
+            "role": requested_role,
+            "institution_id": None,
+            "department_id": None,
+            "company_id": None,
+            "verification_status": "verified" if requested_role == "student" else "pending",
+            "is_active": True,
+        }
+        if requested_role in ("institution_admin", "student"):
+            demo_profile["institution_id"] = MOCK_DATA_STORE["institutions"][0]["id"]
+        persisted = user_repo.create_user_profile(demo_profile)
+        return AuthenticatedUser(persisted)
 
     # Fallback lookup in dev store by email or direct ID
     for profile in MOCK_DATA_STORE["profiles"]:

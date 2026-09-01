@@ -41,11 +41,9 @@ async def get_my_institution(
     """
     Protected endpoint: Returns full institution details scoped to the admin's institution.
     """
+    # If the admin is not associated with any institution, return empty details rather than error
     if not current_user.institution_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No institution associated with this administrator account.",
-        )
+        return {}
     return institution_service.get_institution_details(current_user.institution_id)
 
 @router.post("/departments", response_model=PublicDepartmentResponse, status_code=status.HTTP_201_CREATED, tags=["Institutions"])
