@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, Any
 from fastapi import HTTPException, status
 from app.core.database import db_manager, MOCK_DATA_STORE
@@ -30,6 +31,7 @@ class AuthService:
 
         user_id = str(uuid.uuid4())
         live_signup_success = False
+        auth_res = None
 
         # 1. Supabase live registration attempt if live client configured
         if db_manager.is_live and db_manager.client:
@@ -41,6 +43,9 @@ class AuthService:
                         "data": {
                             "full_name": payload.full_name,
                             "role": payload.role.value,
+                            "institution_id": payload.institution_id,
+                            "department_id": payload.department_id,
+                            "phone": payload.phone,
                         }
                     }
                 })
@@ -53,7 +58,7 @@ class AuthService:
         # 2. Persist Profile
         profile_data = {
             "id": user_id,
-            "email": payload.email,
+            "email": payload.email.lower(),
             "full_name": payload.full_name,
             "phone": payload.phone,
             "role": payload.role.value,
@@ -64,8 +69,28 @@ class AuthService:
 
         created_profile = user_repo.create_user_profile(profile_data)
 
-        # Generate access token
-        token = f"session_{user_id}" if live_signup_success else f"demo_token_{payload.role.value}"
+        # 3. Create student extension record if student
+        if payload.role == UserRole.STUDENT:
+            if db_manager.is_live and db_manager.client:
+                try:
+                    stu_record = {
+                        "id": user_id,
+                        "institution_id": payload.institution_id,
+                        "department_id": payload.department_id,
+                        "roll_number": f"{datetime.now(timezone.utc).year}{user_id[:6].upper()}",
+                        "batch_year": datetime.now(timezone.utc).year,
+                        "current_semester": 1,
+                        "cgpa": 0.0,
+                    }
+                    db_manager.client.table("student_profiles").upsert(stu_record).execute()
+                except Exception as e:
+                    logger.warning(f"Could not insert initial student_profile record: {e}")
+
+        # Generate user-specific access token
+        if live_signup_success and auth_res and hasattr(auth_res, "session") and auth_res.session and getattr(auth_res.session, "access_token", None):
+            token = auth_res.session.access_token
+        else:
+            token = f"session_{user_id}"
 
         return {
             "access_token": token,
@@ -82,11 +107,25 @@ class AuthService:
                     "password": payload.password,
                 })
                 if auth_res and auth_res.session:
-                    profile = user_repo.get_profile_by_id(str(auth_res.user.id))
+                    user_id = str(auth_res.user.id)
+                    profile = user_repo.get_profile_by_id(user_id)
+                    if not profile:
+                        # Auto-create profile from Supabase user data if missing
+                        meta = auth_res.user.user_metadata or {}
+                        profile = user_repo.create_user_profile({
+                            "id": user_id,
+                            "email": payload.email.lower(),
+                            "full_name": meta.get("full_name") or payload.email.split("@")[0],
+                            "role": meta.get("role", "student"),
+                            "phone": meta.get("phone"),
+                            "institution_id": meta.get("institution_id"),
+                            "department_id": meta.get("department_id"),
+                            "verification_status": "verified" if meta.get("role") == "student" else "pending",
+                        })
                     return {
                         "access_token": auth_res.session.access_token,
                         "token_type": "bearer",
-                        "user": profile or {"id": auth_res.user.id, "email": auth_res.user.email},
+                        "user": profile,
                         "message": "Login successful (Supabase Auth).",
                     }
             except Exception as e:
@@ -101,7 +140,7 @@ class AuthService:
             )
 
         return {
-            "access_token": f"demo_token_{profile['role']}",
+            "access_token": f"session_{profile['id']}",
             "token_type": "bearer",
             "user": profile,
             "message": "Login successful.",

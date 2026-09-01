@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from app.core.database import db_manager, MOCK_DATA_STORE
+from app.repositories.user_repository import user_repo
 
 logger = logging.getLogger("skillbridge.repositories.student")
 
@@ -239,93 +240,205 @@ PHASE2_MOCK_STORE = {
 class StudentRepository:
     def get_full_student_profile(self, student_id: str) -> Dict[str, Any]:
         """
-        Fetches combined student profile, academic metrics, and extended portfolio.
+        Fetches combined student profile, academic metrics, and extended portfolio
+        for the currently authenticated student ID.
         """
-        # 1. Base profile
-        base = None
-        for p in MOCK_DATA_STORE["profiles"]:
-            if str(p["id"]) == str(student_id):
-                base = p
-                break
-        
+        # 1. Base profile lookup
+        base = user_repo.get_profile_by_id(student_id)
+        if not base:
+            for p in MOCK_DATA_STORE["profiles"]:
+                if str(p["id"]) == str(student_id):
+                    base = p
+                    break
+
         if not base:
             base = {
                 "id": student_id,
-                "email": "student@institute.ac.in",
+                "email": "student@skillbridge.in",
                 "full_name": "Student User",
-                "phone": "+91 9876543210",
+                "phone": None,
                 "avatar_url": None,
                 "role": "student",
-                "institution_id": "a1000000-0000-0000-0000-000000000001",
-                "department_id": "b1000000-0000-0000-0000-000000000001",
-                "verification_status": "verified"
+                "institution_id": None,
+                "department_id": None,
+                "verification_status": "verified",
+                "is_active": True,
             }
 
-        # 2. Institution & Department names
-        inst_name = "Indian Institute of Technology Delhi"
-        dept_name = "Computer Science and Engineering"
-        for inst in MOCK_DATA_STORE["institutions"]:
-            if str(inst["id"]) == str(base.get("institution_id")):
-                inst_name = inst["name"]
-                break
-        for dept in MOCK_DATA_STORE["departments"]:
-            if str(dept["id"]) == str(base.get("department_id")):
-                dept_name = dept["name"]
-                break
+        # 2. Student specific extension from student_profiles table (Live Supabase)
+        stu_data = {}
+        if db_manager.is_live and db_manager.client:
+            try:
+                stu_res = (
+                    db_manager.client.table("student_profiles")
+                    .select("*")
+                    .eq("id", student_id)
+                    .maybe_single()
+                    .execute()
+                )
+                if stu_res and stu_res.data:
+                    stu_data = stu_res.data
+            except Exception as e:
+                logger.warning(f"Failed to query live student_profiles: {e}")
 
-        # 3. Extended portfolio info
-        ext = PHASE2_MOCK_STORE["student_extended_profiles"].get(student_id, {
-            "program": "B.Tech Computer Science and Engineering",
-            "current_semester": 6,
-            "cgpa": 8.5,
-            "location": "New Delhi, India",
-            "career_interests": ["Full Stack Development", "Cloud Architecture"],
-            "education": [],
-            "projects": [],
-            "certifications": [],
-            "achievements": []
-        })
+        # 3. Institution & Department names
+        inst_name = None
+        dept_name = None
+        inst_id = base.get("institution_id") or stu_data.get("institution_id")
+        dept_id = base.get("department_id") or stu_data.get("department_id")
+
+        if inst_id:
+            if db_manager.is_live and db_manager.client:
+                try:
+                    inst_res = (
+                        db_manager.client.table("institutions")
+                        .select("name")
+                        .eq("id", inst_id)
+                        .maybe_single()
+                        .execute()
+                    )
+                    if inst_res and inst_res.data:
+                        inst_name = inst_res.data.get("name")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch institution name: {e}")
+            if not inst_name:
+                for inst in MOCK_DATA_STORE["institutions"]:
+                    if str(inst["id"]) == str(inst_id):
+                        inst_name = inst["name"]
+                        break
+
+        if dept_id:
+            if db_manager.is_live and db_manager.client:
+                try:
+                    dept_res = (
+                        db_manager.client.table("departments")
+                        .select("name")
+                        .eq("id", dept_id)
+                        .maybe_single()
+                        .execute()
+                    )
+                    if dept_res and dept_res.data:
+                        dept_name = dept_res.data.get("name")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch department name: {e}")
+            if not dept_name:
+                for dept in MOCK_DATA_STORE["departments"]:
+                    if str(dept["id"]) == str(dept_id):
+                        dept_name = dept["name"]
+                        break
+
+        # 4. Extended portfolio info
+        ext = PHASE2_MOCK_STORE["student_extended_profiles"].get(student_id, {})
+
+        if db_manager.is_live and db_manager.client:
+            try:
+                res_check = (
+                    db_manager.client.table("student_resumes")
+                    .select("*")
+                    .eq("student_id", student_id)
+                    .maybe_single()
+                    .execute()
+                )
+                if res_check and res_check.data:
+                    r_data = res_check.data
+                    if not ext.get("education") and r_data.get("education"):
+                        ext["education"] = r_data["education"]
+                    if not ext.get("projects") and r_data.get("projects"):
+                        ext["projects"] = r_data["projects"]
+                    if not ext.get("certifications") and r_data.get("certifications"):
+                        ext["certifications"] = r_data["certifications"]
+                    if not ext.get("achievements") and r_data.get("achievements"):
+                        ext["achievements"] = r_data["achievements"]
+            except Exception as e:
+                logger.warning(f"Failed to fetch student_resumes: {e}")
+
+        # Derive semester & study year
+        current_sem = stu_data.get("current_semester") or ext.get("current_semester")
+        cgpa_val = stu_data.get("cgpa") if stu_data.get("cgpa") is not None else ext.get("cgpa")
+        roll_no = (
+            stu_data.get("roll_number")
+            or ext.get("enrollment_number")
+            or (f"2026{str(base['id'])[:6].upper()}" if base.get("id") else None)
+        )
+
+        year_str = None
+        if current_sem:
+            try:
+                sem_num = int(current_sem)
+                year_num = max(1, (sem_num + 1) // 2)
+                suffix = "st" if year_num == 1 else "nd" if year_num == 2 else "rd" if year_num == 3 else "th"
+                year_str = f"{year_num}{suffix} Year"
+            except Exception:
+                year_str = f"Semester {current_sem}"
 
         return {
-            "id": base["id"],
+            "id": str(base["id"]),
             "email": base["email"],
             "full_name": base["full_name"],
-            "phone": base.get("phone"),
+            "phone": base.get("phone") or ext.get("phone"),
             "avatar_url": base.get("avatar_url"),
             "role": base["role"],
-            "institution_id": base.get("institution_id"),
-            "department_id": base.get("department_id"),
-            "institution_name": inst_name,
-            "department_name": dept_name,
-            "program": ext.get("program", "B.Tech Computer Science and Engineering"),
-            "current_semester": ext.get("current_semester", 6),
-            "cgpa": ext.get("cgpa", 8.5),
-            "location": ext.get("location", "New Delhi, India"),
+            "institution_id": inst_id,
+            "department_id": dept_id,
+            "institution_name": inst_name or "Educational Institution",
+            "department_name": dept_name or "Academic Department",
+            "program": ext.get("program") or (f"B.Tech {dept_name}" if dept_name else "Bachelor of Technology"),
+            "current_semester": current_sem,
+            "year_of_study": ext.get("year_of_study") or year_str,
+            "enrollment_number": roll_no,
+            "date_of_birth": ext.get("date_of_birth"),
+            "gender": ext.get("gender"),
+            "nationality": ext.get("nationality") or "Indian",
+            "section_batch": ext.get("section_batch"),
+            "expected_graduation": ext.get("expected_graduation"),
+            "cgpa": float(cgpa_val) if cgpa_val is not None else None,
+            "location": ext.get("location"),
             "career_interests": ext.get("career_interests", []),
             "education": ext.get("education", []),
             "projects": ext.get("projects", []),
             "certifications": ext.get("certifications", []),
             "achievements": ext.get("achievements", []),
-            "verification_status": base.get("verification_status", "verified")
+            "verification_status": base.get("verification_status", "verified"),
         }
 
     def update_student_profile(self, student_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Updates allowed student profile fields while keeping role and institution_id protected.
         """
-        # Update base profile safe fields
-        base_updates = {k: v for k, v in update_data.items() if k in {"full_name", "phone", "avatar_url"} and v is not None}
-        for p in MOCK_DATA_STORE["profiles"]:
-            if str(p["id"]) == str(student_id):
-                p.update(base_updates)
-                break
+        # 1. Update base profile safe fields in profiles table
+        base_updates = {
+            k: v for k, v in update_data.items()
+            if k in {"full_name", "phone", "avatar_url"} and v is not None
+        }
+        if base_updates:
+            user_repo.update_profile_safe(student_id, base_updates)
 
-        # Update extended fields
+        # 2. Update student_profiles if live
+        if db_manager.is_live and db_manager.client:
+            try:
+                stu_updates = {"id": student_id}
+                if "enrollment_number" in update_data and update_data["enrollment_number"] is not None:
+                    stu_updates["roll_number"] = update_data["enrollment_number"]
+                if "current_semester" in update_data and update_data["current_semester"] is not None:
+                    stu_updates["current_semester"] = update_data["current_semester"]
+                if "cgpa" in update_data and update_data["cgpa"] is not None:
+                    stu_updates["cgpa"] = update_data["cgpa"]
+                if len(stu_updates) > 1:
+                    db_manager.client.table("student_profiles").upsert(stu_updates).execute()
+            except Exception as e:
+                logger.warning(f"Live Supabase student_profiles upsert failed: {e}")
+
+        # 3. Update extended fields in memory store
         if student_id not in PHASE2_MOCK_STORE["student_extended_profiles"]:
             PHASE2_MOCK_STORE["student_extended_profiles"][student_id] = {}
-        
+
         ext = PHASE2_MOCK_STORE["student_extended_profiles"][student_id]
-        for field in ["location", "program", "current_semester", "cgpa", "career_interests", "education", "projects", "certifications", "achievements"]:
+        for field in [
+            "location", "program", "current_semester", "cgpa", "career_interests",
+            "education", "projects", "certifications", "achievements",
+            "date_of_birth", "gender", "nationality", "section_batch",
+            "expected_graduation", "year_of_study", "enrollment_number", "phone"
+        ]:
             if field in update_data and update_data[field] is not None:
                 ext[field] = update_data[field]
 

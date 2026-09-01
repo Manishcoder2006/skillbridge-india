@@ -9,6 +9,7 @@ from app.services.ai.groq_service import groq_service
 from app.services.ai.router import model_router
 from app.services.ai.prompts import PromptTemplates, sanitize_user_context
 from app.repositories.student_repository import student_repo, PHASE2_MOCK_STORE
+from app.repositories.user_repository import user_repo
 from app.repositories.academician_repository import academician_repo
 from app.repositories.interview_repository import interview_repo
 from app.schemas.interview import (
@@ -82,9 +83,12 @@ class AIOrchestrator:
         recent_assessments = student_repo.get_student_assessment_results(user_id)
         latest_score = int(recent_assessments[0].get("percentage", recent_assessments[0].get("score_percentage", 80))) if recent_assessments else 80
 
+        profile = user_repo.get_profile_by_id(user_id)
+        candidate_name = profile.get("full_name") if profile else "Student"
+
         strategy, models = model_router.route_task("skill_gap")
         prompt = PromptTemplates.student_skill_gap_prompt(
-            student_name="Aarav Sharma",
+            student_name=candidate_name,
             skills=skills,
             assessment_score=latest_score,
             target_role=target_role
@@ -153,10 +157,12 @@ class AIOrchestrator:
 
     async def get_career_recommendations(self, user_id: str, interests: Optional[List[str]] = None) -> CareerRecommendationsResponse:
         skills = [s["skill_name"] for s in student_repo.get_student_skills(user_id)]
+        profile = user_repo.get_profile_by_id(user_id)
+        candidate_name = profile.get("full_name") if profile else "Student"
         strategy, models = model_router.route_task("career_guidance")
 
         prompt = PromptTemplates.student_career_guidance_prompt(
-            student_name="Aarav Sharma",
+            student_name=candidate_name,
             skills=skills,
             cgpa=8.9,
             interests=interests or ["Full Stack", "Distributed Cloud Systems"]

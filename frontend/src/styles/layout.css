@@ -160,6 +160,15 @@
   gap: 0.85rem;
 }
 
+.announcement-left,
+.announcement-right {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .tenant-badge {
   display: flex;
   align-items: center;

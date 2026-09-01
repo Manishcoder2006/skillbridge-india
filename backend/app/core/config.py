@@ -58,6 +58,7 @@ class Settings(BaseSettings):
 
     @property
     def effective_secret_key(self) -> str:
-        return self.SUPABASE_SECRET_KEY or self.SUPABASE_SERVICE_ROLE_KEY
+        # Prefer service‑role key for full write access; fall back to anon key for read‑only scenarios.
+        return self.SUPABASE_SERVICE_ROLE_KEY or self.SUPABASE_ANON_KEY
 
 settings = Settings()

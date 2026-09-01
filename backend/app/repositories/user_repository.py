@@ -47,14 +47,14 @@ class UserRepository:
         return None
 
     def create_user_profile(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
-        user_id = user_data.get("id") or str(uuid.uuid4())
+        user_id = str(user_data.get("id") or uuid.uuid4())
         profile_record = {
             "id": user_id,
-            "email": user_data["email"].lower(),
-            "full_name": user_data["full_name"],
+            "email": str(user_data["email"]).lower(),
+            "full_name": user_data.get("full_name") or "User",
             "phone": user_data.get("phone"),
             "avatar_url": user_data.get("avatar_url"),
-            "role": user_data["role"],
+            "role": user_data.get("role", "student"),
             "institution_id": user_data.get("institution_id"),
             "department_id": user_data.get("department_id"),
             "company_id": user_data.get("company_id"),
@@ -64,12 +64,24 @@ class UserRepository:
 
         if db_manager.is_live and db_manager.client:
             try:
-                res = db_manager.client.table("profiles").insert(profile_record).execute()
-                return res.data[0] if res.data else profile_record
+                res = db_manager.client.table("profiles").upsert(profile_record).execute()
+                if res and res.data:
+                    profile_record = res.data[0]
             except Exception as e:
-                logger.warning(f"Live Supabase insert profile failed: {e}. Falling back to dev store.")
+                logger.warning(f"Live Supabase upsert profile failed: {e}. Storing in memory store.")
 
-        MOCK_DATA_STORE["profiles"].append(profile_record)
+        # Always keep in-memory store synchronized for instant multi-student lookups
+        existing_idx = None
+        for i, p in enumerate(MOCK_DATA_STORE["profiles"]):
+            if str(p["id"]) == user_id or p["email"].lower() == profile_record["email"].lower():
+                existing_idx = i
+                break
+
+        if existing_idx is not None:
+            MOCK_DATA_STORE["profiles"][existing_idx] = profile_record
+        else:
+            MOCK_DATA_STORE["profiles"].append(profile_record)
+
         return profile_record
 
     def update_profile_safe(self, user_id: str, update_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -89,9 +101,9 @@ class UserRepository:
                     .execute()
                 )
                 if res.data:
-                    return res.data[0]
+                    safe_update = res.data[0]
             except Exception as e:
-                logger.warning(f"Live Supabase update failed: {e}. Falling back to dev store.")
+                logger.warning(f"Live Supabase update failed: {e}. Updating memory store.")
 
         for p in MOCK_DATA_STORE["profiles"]:
             if str(p["id"]) == str(user_id):

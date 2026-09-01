@@ -1,4 +1,6 @@
 import logging
+import jwt
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -53,37 +55,102 @@ async def get_current_user(
 
     token = credentials.credentials
 
-    # 1. Development & Demo / Test Token Handler
+    # 1. Exact User-Specific Session / ID Token Handler (e.g. session_<UUID>, bearer_<UUID>)
+    if token.startswith("session_") or token.startswith("bearer_"):
+        extracted_id = token.split("_", 1)[1]
+        profile = user_repo.get_profile_by_id(extracted_id)
+        if profile:
+            return AuthenticatedUser(profile)
+        # Check by email in case session_<email> was passed
+        profile_email = user_repo.get_profile_by_email(extracted_id)
+        if profile_email:
+            return AuthenticatedUser(profile_email)
+
     for profile in MOCK_DATA_STORE["profiles"]:
         if (
-            token == f"demo_token_{profile['role']}"
-            or token == profile["id"]
+            token == profile["id"]
+            or token == f"session_{profile['id']}"
             or token == f"bearer_{profile['id']}"
-            or token == f"mock_token_{profile['id']}"
         ):
             return AuthenticatedUser(profile)
 
-    if token.startswith("demo_token_") or token.startswith("test_token_"):
-        requested_role = token.split("_")[-1]
-        for profile in MOCK_DATA_STORE["profiles"]:
-            if profile["role"] == requested_role:
+    # 2. JWT Token Authentication (Live Supabase & Decoded JWTs)
+    if token.startswith("eyJ"):
+        user_id = None
+        user_email = ""
+        user_meta = {}
+
+        # 2A. Try live Supabase Gotrue get_user API
+        if db_manager.is_live and db_manager.client:
+            try:
+                auth_response = db_manager.client.auth.get_user(token)
+                if auth_response and auth_response.user:
+                    user_id = str(auth_response.user.id)
+                    user_email = auth_response.user.email or ""
+                    user_meta = auth_response.user.user_metadata or {}
+            except Exception as e:
+                logger.warning(f"Live Supabase get_user API error: {e}. Decoding JWT locally.")
+
+        # 2B. Direct resilient JWT payload decoding (zero network latency dependency)
+        if not user_id:
+            try:
+                decoded = jwt.decode(token, options={"verify_signature": False})
+                user_id = str(decoded.get("sub"))
+                user_email = decoded.get("email", "")
+                user_meta = decoded.get("user_metadata", {})
+            except Exception as e:
+                logger.warning(f"JWT payload decode error: {e}")
+
+        # 2C. Find or synthesize authenticated user profile
+        if user_id:
+            profile = user_repo.get_profile_by_id(user_id)
+            if profile:
                 return AuthenticatedUser(profile)
 
-    # 2. Live Supabase Authentication
-    if db_manager.is_live and db_manager.client:
-        try:
-            auth_response = db_manager.client.auth.get_user(token)
-            if auth_response and auth_response.user:
-                user_id = str(auth_response.user.id)
-                profile = user_repo.get_profile_by_id(user_id)
-                if profile:
-                    return AuthenticatedUser(profile)
-        except Exception as e:
-            logger.warning(f"Live Supabase token verification failed: {e}. Checking dev store.")
+            # Profile row not yet found in database; synthesize from JWT metadata and persist
+            fallback_profile = {
+                "id": user_id,
+                "email": user_email,
+                "full_name": user_meta.get("full_name") or (user_email.split("@")[0] if user_email else "Student User"),
+                "phone": user_meta.get("phone"),
+                "role": user_meta.get("role", UserRole.STUDENT.value),
+                "institution_id": user_meta.get("institution_id"),
+                "department_id": user_meta.get("department_id"),
+                "company_id": user_meta.get("company_id"),
+                "verification_status": "verified" if user_meta.get("role") == UserRole.STUDENT.value else "pending",
+                "is_active": True,
+            }
+            persisted = user_repo.create_user_profile(fallback_profile)
 
-    # Fallback lookup in dev store by email or id
+            # Ensure student_profiles row exists for student users
+            if user_meta.get("role", UserRole.STUDENT.value) == UserRole.STUDENT.value:
+                if db_manager.is_live and db_manager.client:
+                    try:
+                        stu_record = {
+                            "id": user_id,
+                            "institution_id": user_meta.get("institution_id"),
+                            "department_id": user_meta.get("department_id"),
+                            "roll_number": f"{datetime.now(timezone.utc).year}{user_id[:6].upper()}",
+                            "batch_year": datetime.now(timezone.utc).year,
+                            "current_semester": 1,
+                            "cgpa": 0.0,
+                        }
+                        db_manager.client.table("student_profiles").upsert(stu_record).execute()
+                    except Exception as e:
+                        logger.warning(f"Could not upsert initial student_profile record: {e}")
+
+            return AuthenticatedUser(persisted or fallback_profile)
+
+    # 3. Explicit Demo / Test Role Tokens
+    if token.startswith("demo_token_") or token.startswith("test_token_") or token.startswith("mock_token_"):
+        requested_role = token.split("_", 2)[-1]
+        for profile in MOCK_DATA_STORE["profiles"]:
+            if profile.get("role") == requested_role:
+                return AuthenticatedUser(profile)
+
+    # Fallback lookup in dev store by email or direct ID
     for profile in MOCK_DATA_STORE["profiles"]:
-        if token == profile["id"] or token in [f"session_{profile['id']}"]:
+        if token == profile["id"] or token == profile["email"]:
             return AuthenticatedUser(profile)
 
     raise HTTPException(

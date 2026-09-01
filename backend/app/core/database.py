@@ -140,25 +140,25 @@ class SupabaseManager:
         self._init_client()
 
     def _init_client(self):
-        # Validate if live Supabase is configured
+        # Initialize Supabase client if we have a URL **and** at least one secret key.
+        # Prefer the service‑role key for full read/write capabilities; otherwise use the anon key (read‑only).
         if (
             settings.SUPABASE_URL
             and not settings.SUPABASE_URL.startswith("https://demo-placeholder")
-            and settings.effective_secret_key
-            and settings.effective_secret_key != "demo-service-role-key"
+            and (settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY)
         ):
             try:
-                self._client = create_client(
-                    settings.SUPABASE_URL,
-                    settings.effective_secret_key
-                )
+                # Choose the appropriate secret without logging its value.
+                secret = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_ANON_KEY
+                key_type = "service‑role" if settings.SUPABASE_SERVICE_ROLE_KEY else "anon"
+                self._client = create_client(settings.SUPABASE_URL, secret)
                 self._is_live = True
-                logger.info("Connected to live Supabase backend.")
+                logger.info(f"Connected to live Supabase backend using {key_type} key.")
             except Exception as e:
                 logger.warning(f"Could not connect to live Supabase: {e}. Falling back to dev store.")
                 self._is_live = False
         else:
-            logger.info("Running in local development / offline foundation mode.")
+            logger.info("Running in local development / offline foundation mode (no Supabase key provided).")
             self._is_live = False
 
     @property

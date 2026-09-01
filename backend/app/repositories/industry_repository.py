@@ -308,8 +308,8 @@ class IndustryRepository:
                 cand_item = {
                     "application_id": app["id"],
                     "student_id": student_id,
-                    "candidate_name": student_profile.get("full_name", "Aarav Sharma"),
-                    "candidate_email": student_profile.get("email", "student@iitd.ac.in"),
+                    "candidate_name": student_profile.get("full_name") or "Student Applicant",
+                    "candidate_email": student_profile.get("email") or "",
                     "candidate_cgpa": 8.9,
                     "candidate_institution": inst.get("name", "IIT Delhi"),
                     "candidate_department": dept.get("name", "Computer Science & Engineering"),
@@ -393,8 +393,8 @@ class IndustryRepository:
 
         return {
             "student_id": student_id,
-            "full_name": profile.get("full_name", "Aarav Sharma"),
-            "email": profile.get("email", "student@iitd.ac.in"),
+            "full_name": profile.get("full_name") or "Student Applicant",
+            "email": profile.get("email") or "",
             "institution_name": inst.get("name", "IIT Delhi"),
             "department_name": dept.get("name", "Computer Science & Engineering"),
             "program": "B.Tech Computer Science & Engineering",
