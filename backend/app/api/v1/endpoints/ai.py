@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, status
 from app.core.security import require_roles, get_current_user
 from app.models.enums import UserRole
 from app.services.ai.orchestrator import ai_orchestrator
+from app.core.database import db_manager
 from app.schemas.ai import (
     SkillGapAnalysisRequest,
     SkillGapAnalysisResponse,
@@ -22,6 +23,8 @@ from app.schemas.ai import (
     CohortInsightsResponse,
     AIAssistantChatRequest,
     AIAssistantChatResponse,
+    VideoTutorRequest,
+    VideoTutorResponse,
 )
 
 router = APIRouter(tags=["Multi-Model AI"])
@@ -140,6 +143,63 @@ async def improve_student_resume_bullet(
         target_role=payload.target_role,
         context_type=payload.context_type or "experience"
     )
+
+# -----------------------------------------------------------------------------
+# 5. Video Tutor Endpoints
+# -----------------------------------------------------------------------------
+
+from fastapi import BackgroundTasks
+from app.services.ai.video_tutor_service import VideoTutorService
+from app.repositories.learning_video_repository import LearningVideoRepository
+
+video_tutor_service = VideoTutorService()
+
+@router.post("/student/video-tutor", response_model=VideoTutorResponse, status_code=202)
+async def create_video_tutor_job(
+    payload: VideoTutorRequest,
+    background_tasks: BackgroundTasks,
+    current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
+):
+    """Create a video tutor generation job.
+    - Enforces one active job per student.
+    - Returns job_id and initial status.
+    """
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "guest"))
+    repo = LearningVideoRepository()
+    if repo.has_active_job(user_id):
+        raise HTTPException(status_code=429, detail="A video generation job is already in progress for this user.")
+    job = repo.create_job(user_id=user_id, topic=payload.topic, max_duration_seconds=payload.max_duration_seconds)
+    # Enqueue background processing
+    background_tasks.add_task(video_tutor_service.process_job, job.job_id)
+    return VideoTutorResponse(job_id=job.job_id, status=job.status, video_url=None)
+
+@router.get("/student/video-tutor/{job_id}", response_model=VideoTutorResponse)
+async def get_video_tutor_job(
+    job_id: str,
+    current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
+):
+    """Retrieve status and signed video URL for a completed job.
+    Generates a fresh 7‑day signed URL from Supabase.
+    """
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "guest"))
+    repo = LearningVideoRepository()
+    job = repo.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this job")
+    video_url = None
+    if job.status == "completed" and job.video_path:
+        # Generate signed URL (7 days = 604800 seconds)
+        try:
+            signed = db_manager.client.storage.from_("video-tutor").create_signed_url(
+                path=job.video_path, expires_in=604800
+            )
+            video_url = signed.get("signedURL")
+        except Exception:
+            # If signed URL generation fails, keep None
+            video_url = None
+    return VideoTutorResponse(job_id=job.job_id, status=job.status, video_url=video_url)
 
 
 # -----------------------------------------------------------------------------

@@ -201,3 +201,17 @@ class AIAssistantChatResponse(BaseModel):
     quick_suggestions: List[str] = Field(default_factory=list)
     relevant_links: List[Dict[str, str]] = Field(default_factory=list)
     ai_meta: AIMeta
+
+# -------------------------------------------------------------------------------
+# 5. AI Video Tutor Schemas
+# -------------------------------------------------------------------------------
+class VideoTutorRequest(BaseModel):
+    """Request to generate an AI video tutor lesson."""
+    topic: str = Field(..., description="The learning topic requested by the student")
+    max_duration_seconds: int = Field(default=600, ge=30, le=600, description="Maximum video length in seconds")
+
+class VideoTutorResponse(BaseModel):
+    """Response returned when a video generation job is created."""
+    job_id: str = Field(..., description="Identifier of the video generation job")
+    status: str = Field(..., description="Current job status, e.g., 'queued'")
+    video_url: str | None = Field(None, description="URL to the generated video when status is 'completed'")

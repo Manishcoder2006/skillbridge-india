@@ -823,7 +823,8 @@ class AIOrchestrator:
         combined_skills = list(set((payload.skills or []) + student_skills))
         num_q = min(max(payload.number_of_questions or 5, 3), 15)
 
-        strategy, models = model_router.route_task("candidate_analysis")
+        # Use interview_generation routing to ensure Gemini primary
+        strategy, models = model_router.route_task("interview_generation")
         prompt = PromptTemplates.interview_questions_generate_prompt(
             role=payload.role,
             interview_type=payload.interview_type,
@@ -832,24 +833,41 @@ class AIOrchestrator:
             num_questions=num_q,
             resume_summary=resume_summary if payload.resume_personalization else None,
             job_description=payload.job_description,
-            custom_instructions=payload.custom_instructions
+            custom_instructions=payload.custom_instructions,
         )
 
-        # Build dynamic fallback questions tailored to requested role & mode
+        # Build dynamic fallback questions (used only if simulation is enabled)
         fallback_questions = self._build_dynamic_interview_fallback(
             role=payload.role,
             interview_type=payload.interview_type,
             skills=combined_skills,
             num_questions=num_q,
             experience_level=payload.experience_level or "intermediate",
-            custom_focus=payload.interview_focus
+            custom_focus=payload.interview_focus,
         )
 
-        parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data={"questions": fallback_questions}
-        )
+        try:
+            # Primary Gemini call
+            parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data={"questions": fallback_questions},
+            )
+        except Exception:
+            # Gemini failed – attempt genuine Groq fallback
+            try:
+                parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data={"questions": fallback_questions},
+                )
+                is_fallback = False
+            except Exception:
+                from fastapi import HTTPException, status
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Interview service unavailable: both Gemini and Groq failed",
+                )
 
         raw_questions = parsed_data.get("questions", [])
         if not raw_questions or not isinstance(raw_questions, list):
@@ -913,7 +931,8 @@ class AIOrchestrator:
         question_id: str,
         answer_text: str
     ) -> AnswerEvaluationResponse:
-        session = interview_repo.get_session(interview_id)
+        if session.get("user_id") != user_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access to interview session.")
         if not session:
             raise ValueError("Interview session not found.")
 
@@ -926,7 +945,7 @@ class AIOrchestrator:
                 "evaluation_criteria": ["Clarity", "Correctness"]
             }
 
-        strategy, models = model_router.route_task("candidate_analysis")
+        strategy, models = model_router.route_task("interview_generation")
         prompt = PromptTemplates.interview_answer_evaluation_prompt(
             role=session.get("role", "Software Engineer"),
             question_text=target_question.get("question_text", ""),

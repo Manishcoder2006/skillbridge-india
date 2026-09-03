@@ -5,6 +5,9 @@ class ModelRouter:
 
     @staticmethod
     def route_task(task_type: str, user_preference: str = "auto") -> Tuple[str, List[str]]:
+        # Interview generation should always use Gemini as primary provider
+        if task_type == "interview_generation":
+            return "gemini_only", ["gemini-1.5-flash"]
         """
         Determines the primary and secondary execution strategy for a given AI task.
         Returns: (routing_strategy, models_to_invoke)
