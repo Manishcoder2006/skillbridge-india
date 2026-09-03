@@ -333,8 +333,8 @@ export const InterviewReport = ({ report, onPracticeAgain, onBackToHub }) => {
                     >
                       {/* Candidate Submitted Answer */}
                       <div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                          YOUR SUBMITTED RESPONSE:
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          🎙️ YOUR SPOKEN ANSWER (VERBAL TRANSCRIPT):
                         </div>
                         <div
                           style={{

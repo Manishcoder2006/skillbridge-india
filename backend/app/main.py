@@ -18,21 +18,24 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Schedule daily cleanup for video tutor jobs
-from apscheduler.schedulers.background import BackgroundScheduler
-from app.core.cleanup import run_daily_cleanup
+# Schedule daily cleanup for video tutor jobs (optional background scheduler)
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from app.core.cleanup import run_daily_cleanup
 
-scheduler = BackgroundScheduler()
-# Run at 02:00 UTC daily
-scheduler.add_job(run_daily_cleanup, "cron", hour=2, minute=0)
-@scheduler.scheduled_job('interval', minutes=1)  # dummy to start scheduler
+    scheduler = BackgroundScheduler()
+    # Run at 02:00 UTC daily
+    scheduler.add_job(run_daily_cleanup, "cron", hour=2, minute=0)
 
-def start_scheduler():
-    scheduler.start()
+    def start_scheduler():
+        scheduler.start()
 
-@app.on_event("startup")
-async def startup_event():
-    start_scheduler()
+    @app.on_event("startup")
+    async def startup_event():
+        start_scheduler()
+except ImportError:
+    # apscheduler not installed in current environment
+    pass
 
 
 # 1. CORS Middleware

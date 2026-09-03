@@ -575,3 +575,52 @@ table.w-full {
     margin: 0 !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Real-Time Voice + Video AI Interview Animations
+   -------------------------------------------------------------------------- */
+@keyframes soundWave {
+  0% {
+    height: 6px;
+    opacity: 0.4;
+  }
+  100% {
+    height: 32px;
+    opacity: 1;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+.pulse-animation {
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 840px) {
+  .interview-grid-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+

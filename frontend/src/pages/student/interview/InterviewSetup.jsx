@@ -561,6 +561,26 @@ export const InterviewSetup = ({
               </div>
             )}
 
+            {/* Voice + Video Notice */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                padding: '0.75rem 1rem',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                fontSize: '0.78rem',
+                color: '#15803d',
+              }}
+            >
+              <CheckCircle2 size={16} color="#16a34a" />
+              <span>
+                <strong>Real-Time Voice + Video Mode:</strong> Your camera and microphone will activate locally in the browser room. You will hear questions spoken aloud and reply by speaking.
+              </span>
+            </div>
+
             {/* Submit Action */}
             <div style={{ marginTop: '0.5rem' }}>
               <button
@@ -588,11 +608,11 @@ export const InterviewSetup = ({
                 {isLoading ? (
                   <>
                     <span className="spinner" style={{ width: '18px', height: '18px', borderTopColor: '#ffffff' }} />
-                    Synthesizing AI Questions...
+                    Generating AI Interview Room...
                   </>
                 ) : (
                   <>
-                    <Sparkles size={18} /> Start {interviewType.toUpperCase()} Interview
+                    <Sparkles size={18} /> Start Real-Time Voice + Video Interview
                   </>
                 )}
               </button>

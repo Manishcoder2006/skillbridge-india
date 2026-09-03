@@ -1,4 +1,4 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.core.security import require_roles, get_current_user, AuthenticatedUser
 from app.models.enums import UserRole
@@ -7,6 +7,7 @@ from app.repositories.interview_repository import interview_repo
 from app.schemas.interview import (
     InterviewStartRequest,
     InterviewResponse,
+    InterviewQuestion,
     AnswerSubmitRequest,
     AnswerEvaluationResponse,
     FinalPerformanceReportResponse,
@@ -91,6 +92,29 @@ async def submit_interview_answer(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Answer evaluation failed: {str(e)}"
+        )
+
+
+@router.post("/{interview_id}/next-question", response_model=Optional[InterviewQuestion])
+async def get_adaptive_next_question(
+    interview_id: str,
+    current_user: Any = Depends(require_roles([UserRole.STUDENT, UserRole.SUPER_ADMIN]))
+):
+    """
+    Generates the next adaptive question based on the candidate's previous verbal responses and scores.
+    """
+    user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
+    try:
+        return await ai_orchestrator.generate_adaptive_next_question(
+            user_id=user_id,
+            interview_id=interview_id
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate next adaptive question: {str(e)}"
         )
 
 

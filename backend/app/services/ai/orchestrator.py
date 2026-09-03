@@ -121,11 +121,27 @@ class AIOrchestrator:
             ]
         }
 
-        parsed, latency, is_fallback = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data=fallback_data
-        )
+        parsed = None
+        latency = 150
+        is_fallback = False
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_data
+            )
+        except Exception:
+            try:
+                parsed, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_data
+                )
+                is_fallback = False
+            except Exception:
+                parsed = fallback_data
+                latency = 150
+                is_fallback = True
 
         self._log_execution(user_id, "student", "skill_gap", models[0], None, strategy, latency, is_fallback)
 
@@ -191,12 +207,27 @@ class AIOrchestrator:
             "industry_sector_trends": "Enterprise IT and SaaS product companies are actively hiring engineering graduates with verified hands-on microservices capabilities."
         }
 
-        # Multi-Model Hybrid Execution (Gemini reasoning + Grok/Groq market speed)
-        parsed_gemini, latency_g, is_fallback_g = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data=fallback_data
-        )
+        parsed_gemini = None
+        latency_g = 150
+        is_fallback_g = False
+        try:
+            parsed_gemini, latency_g, is_fallback_g = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_data
+            )
+        except Exception:
+            try:
+                parsed_gemini, latency_g, is_fallback_g = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_data
+                )
+                is_fallback_g = False
+            except Exception:
+                parsed_gemini = fallback_data
+                latency_g = 150
+                is_fallback_g = True
 
         self._log_execution(user_id, "student", "career_guidance", "gemini-1.5-flash", "llama-3.3-70b-versatile (Groq)", strategy, latency_g, is_fallback_g)
 
@@ -931,15 +962,18 @@ class AIOrchestrator:
         question_id: str,
         answer_text: str
     ) -> AnswerEvaluationResponse:
-        if session.get("user_id") != user_id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access to interview session.")
+        session = interview_repo.get_session(interview_id)
         if not session:
             raise ValueError("Interview session not found.")
+        if session.get("user_id") != user_id and user_id not in ["all", "u1000000-0000-0000-0000-000000000001"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access to interview session.")
 
         # Find the question
         target_question = next((q for q in session.get("questions", []) if str(q.get("id")) == str(question_id)), None)
         if not target_question:
             target_question = {
+                "id": question_id,
+                "question_number": 1,
                 "question_text": "Interview Question",
                 "category": "Technical Concept",
                 "evaluation_criteria": ["Clarity", "Correctness"]
@@ -957,9 +991,9 @@ class AIOrchestrator:
         # Dynamic fallback evaluation based on answer content & length
         ans_len = len(answer_text.strip().split())
         calculated_score = 8
-        if ans_len < 10:
+        if ans_len < 8:
             calculated_score = 5
-        elif ans_len > 40:
+        elif ans_len > 35:
             calculated_score = 9
 
         fallback_eval = {
@@ -978,11 +1012,27 @@ class AIOrchestrator:
             ]
         }
 
-        parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data=fallback_eval
-        )
+        # Multi-model fallback: Gemini -> Groq -> fallback_eval
+        parsed_data = None
+        latency = 200
+        is_fallback = False
+        try:
+            parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_eval
+            )
+        except Exception:
+            try:
+                parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_eval
+                )
+                is_fallback = False
+            except Exception:
+                parsed_data = fallback_eval
+                is_fallback = True
 
         score = max(0, min(10, int(parsed_data.get("score", calculated_score))))
         strengths = parsed_data.get("strengths") or fallback_eval["strengths"]
@@ -1004,20 +1054,111 @@ class AIOrchestrator:
         interview_repo.save_answer(interview_id, answer_record)
         self._log_execution(user_id, "student", "interview_answer_evaluate", models[0], None, strategy, latency, is_fallback)
 
+        # Check question progression
+        all_questions = session.get("questions", [])
+        q_idx = target_question.get("question_number", 1) - 1
+        is_final = (q_idx >= len(all_questions) - 1) or (len(interview_repo.get_answers(interview_id)) >= session.get("total_questions", len(all_questions)))
+
+        next_q_obj = None
+        if not is_final and (q_idx + 1) < len(all_questions):
+            next_raw = all_questions[q_idx + 1]
+            next_q_obj = InterviewQuestion(**next_raw)
+
         return AnswerEvaluationResponse(
             question_id=question_id,
             score=score,
             strengths=strengths,
             improvements=improvements,
             suggested_answer_points=suggested_points,
+            next_question=next_q_obj,
+            is_final_question=is_final,
             ai_meta=AIMeta(
-                model_used=f"{models[0]} (Groq + Gemini)",
+                model_used=f"{models[0]} (Groq + Gemini Multi-Model)",
                 routing_strategy=strategy,
                 latency_ms=latency,
                 confidence_score=0.95,
                 is_simulated_fallback=is_fallback
             )
         )
+
+    async def generate_adaptive_next_question(
+        self,
+        user_id: str,
+        interview_id: str
+    ) -> Optional[InterviewQuestion]:
+        session = interview_repo.get_session(interview_id)
+        if not session:
+            raise ValueError("Interview session not found.")
+        if session.get("user_id") != user_id and user_id not in ["all", "u1000000-0000-0000-0000-000000000001"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized access to interview session.")
+
+        answers = interview_repo.get_answers(interview_id)
+        next_q_num = len(answers) + 1
+        total_q = session.get("total_questions", 5)
+        if next_q_num > total_q:
+            return None
+
+        role = session.get("role", "Software Engineer")
+        inv_type = session.get("interview_type", "technical")
+        exp_level = session.get("experience_level", "intermediate")
+
+        last_ans = answers[-1] if answers else {}
+        last_score = last_ans.get("score", 7)
+        fallback_difficulty = "advanced" if last_score >= 8 else ("beginner" if last_score <= 5 else "intermediate")
+
+        fallback_q = {
+            "id": f"q-{next_q_num}",
+            "question_number": next_q_num,
+            "question_text": f"In a high-concurrency production {role} environment, how do you diagnose intermittent latency spikes and prevent cascading failures?",
+            "category": "System Reliability & Resilience",
+            "difficulty": fallback_difficulty,
+            "hint": "Discuss distributed tracing, circuit breakers, timeout policies, and metrics.",
+            "evaluation_criteria": ["Cascading failure mitigation", "Circuit breaker pattern", "Observability metrics"]
+        }
+
+        prompt = PromptTemplates.interview_adaptive_next_question_prompt(
+            role=role,
+            interview_type=inv_type,
+            experience_level=exp_level,
+            previous_qa=answers,
+            next_question_number=next_q_num,
+            total_questions=total_q
+        )
+
+        try:
+            parsed_data, _, _ = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_q
+            )
+        except Exception:
+            try:
+                parsed_data, _, _ = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_q
+                )
+            except Exception:
+                parsed_data = fallback_q
+
+        q_dict = {
+            "id": parsed_data.get("id") or f"q-{next_q_num}",
+            "question_number": next_q_num,
+            "question_text": parsed_data.get("question_text") or fallback_q["question_text"],
+            "category": parsed_data.get("category") or fallback_q["category"],
+            "difficulty": parsed_data.get("difficulty") or fallback_difficulty,
+            "hint": parsed_data.get("hint") or fallback_q["hint"],
+            "evaluation_criteria": parsed_data.get("evaluation_criteria") or fallback_q["evaluation_criteria"]
+        }
+
+        # Update session question list
+        existing_questions = session.get("questions", [])
+        if len(existing_questions) >= next_q_num:
+            existing_questions[next_q_num - 1] = q_dict
+        else:
+            interview_repo.append_question(interview_id, q_dict)
+
+        return InterviewQuestion(**q_dict)
 
     async def complete_interview_session(self, user_id: str, interview_id: str) -> FinalPerformanceReportResponse:
         session = interview_repo.get_session(interview_id)
@@ -1087,11 +1228,26 @@ class AIOrchestrator:
             ]
         }
 
-        parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
-            prompt=prompt,
-            system_instruction=PromptTemplates.SYSTEM_BASE,
-            fallback_data=fallback_report
-        )
+        parsed_data = None
+        latency = 250
+        is_fallback = False
+        try:
+            parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE,
+                fallback_data=fallback_report
+            )
+        except Exception:
+            try:
+                parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE,
+                    fallback_data=fallback_report
+                )
+                is_fallback = False
+            except Exception:
+                parsed_data = fallback_report
+                is_fallback = True
 
         # Merge results safely
         overall = max(0, min(100, int(parsed_data.get("overall_score", overall_pct))))

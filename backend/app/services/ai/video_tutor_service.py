@@ -3,7 +3,7 @@ import uuid
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pyttsx3
 from PIL import Image, ImageDraw, ImageFont
@@ -91,20 +91,15 @@ def _assemble_video(slide_paths: List[Path], audio_paths: List[Path], subtitles_
             pass
 
 class VideoTutorService:
-    def __init__(self, repo: LearningVideoRepository = LearningVideoRepository()):
-        self.repo = repo
-        # Verify required binaries are present; fail fast if not.
+    def __init__(self, repo: Optional[LearningVideoRepository] = None):
+        self.repo = repo or LearningVideoRepository()
+        self.tts_engine = None
+
+    def _ensure_binaries(self):
         if not _binary_exists("ffmpeg"):
             raise HTTPException(status_code=503, detail="ffmpeg not available on server")
         if not _binary_exists("espeak"):
             raise HTTPException(status_code=503, detail="espeak not available on server")
-        # Initialise TTS engine and prefer espeak voice if available.
-        self.tts_engine = pyttsx3.init()
-        for v in self.tts_engine.getProperty('voices'):
-            if 'espeak' in v.id.lower():
-                self.tts_engine.setProperty('voice', v.id)
-                break
-        self.tts_engine.setProperty('rate', 150)
 
     async def _generate_lesson(self, user_id: str, topic: str, max_duration: int) -> dict:
         """Generate a lesson plan using Gemini primary, Groq fallback.

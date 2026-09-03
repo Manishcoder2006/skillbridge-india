@@ -492,6 +492,11 @@ export const apiService = {
     return res.data;
   },
 
+  getNextAdaptiveQuestion: async (interviewId) => {
+    const res = await apiClient.post(`/interviews/${interviewId}/next-question`);
+    return res.data;
+  },
+
   completeInterview: async (interviewId) => {
     const res = await apiClient.post(`/interviews/${interviewId}/complete`);
     return res.data;

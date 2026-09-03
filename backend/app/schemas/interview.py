@@ -55,6 +55,8 @@ class AnswerEvaluationResponse(BaseModel):
     strengths: List[str] = Field(default_factory=list)
     improvements: List[str] = Field(default_factory=list)
     suggested_answer_points: Optional[List[str]] = Field(default_factory=list)
+    next_question: Optional[InterviewQuestion] = None
+    is_final_question: Optional[bool] = False
     ai_meta: Optional[AIMeta] = None
 
 

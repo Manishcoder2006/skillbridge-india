@@ -306,6 +306,46 @@ Generate a valid JSON object with:
 }}"""
 
     @staticmethod
+    def interview_adaptive_next_question_prompt(
+        role: str,
+        interview_type: str,
+        experience_level: str,
+        previous_qa: List[Dict[str, Any]],
+        next_question_number: int,
+        total_questions: int
+    ) -> str:
+        qa_history = "\n".join([
+            f"Q{item.get('question_number', idx + 1)}: {item.get('question_text', '')} (Category: {item.get('category', 'General')})\n"
+            f"Candidate Spoken Answer: \"{item.get('answer_text', '')}\"\n"
+            f"Evaluation Score: {item.get('score', 7)}/10\n"
+            for idx, item in enumerate(previous_qa)
+        ])
+        return f"""You are the SkillBridge India Adaptive AI Interviewer.
+Target Role: {role}
+Interview Type: {interview_type.upper()}
+Experience Level: {experience_level}
+Current Progress: Question {next_question_number} of {total_questions}
+
+Candidate's Previous Performance and Spoken Answers:
+{qa_history}
+
+Generate the NEXT adaptive interview question (Question {next_question_number} of {total_questions}):
+- If the candidate answered previous questions strongly (score >= 8), elevate the depth: test architectural tradeoffs, edge cases, scalability, or complex real-world decisions.
+- If the candidate gave a shorter or basic answer (score <= 5), pivot to test core underlying fundamentals and foundational principles.
+- Ensure the question is spoken cleanly, conversational, and explores a fresh dimension.
+
+Respond in strict JSON:
+{{
+  "id": "q-{next_question_number}",
+  "question_number": {next_question_number},
+  "question_text": "<Clear, spoken, conversational interview question>",
+  "category": "<Category e.g. System Design / Databases / Concurrency / Behavioral / Architecture>",
+  "difficulty": "beginner|intermediate|advanced",
+  "hint": "<A concise thinking framework to guide the candidate>",
+  "evaluation_criteria": ["<Key concept 1>", "<Key concept 2>", "<Key concept 3>"]
+}}"""
+
+    @staticmethod
     def interview_final_report_prompt(
         role: str,
         interview_type: str,

@@ -2,10 +2,17 @@ from sqlmodel import Session, select
 from app.models.learning_video_job import LearningVideoJob
 from typing import List, Optional
 from datetime import datetime
+from app.core.database import db_manager
 
 class LearningVideoRepository:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, session: Optional[Session] = None):
+        self._session = session
+
+    @property
+    def session(self) -> Session:
+        if self._session is not None:
+            return self._session
+        return db_manager.get_session()
 
     def create_job(self, user_id: str, topic: str, max_duration_seconds: int) -> LearningVideoJob:
         job = LearningVideoJob(user_id=user_id, topic=topic, max_duration_seconds=max_duration_seconds)

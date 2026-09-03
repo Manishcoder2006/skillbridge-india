@@ -165,7 +165,19 @@ class InterviewRepository:
         if session:
             session["current_question_index"] = len(INTERVIEW_ANSWERS_STORE[interview_id])
 
-        return answer_record
+    def update_session(self, interview_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        session = INTERVIEW_SESSIONS_STORE.get(interview_id)
+        if session:
+            session.update(updates)
+        return session
+
+    def append_question(self, interview_id: str, question: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        session = INTERVIEW_SESSIONS_STORE.get(interview_id)
+        if session:
+            questions = session.setdefault("questions", [])
+            questions.append(question)
+            session["total_questions"] = len(questions)
+        return session
 
     def get_answers(self, interview_id: str) -> List[Dict[str, Any]]:
         return INTERVIEW_ANSWERS_STORE.get(interview_id, [])
