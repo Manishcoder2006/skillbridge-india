@@ -16,19 +16,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/api/index.py"
+      "dest": "https://skillbridge-india-9zpl.onrender.com/api/$1"
     },
     {
       "src": "/health",
-      "dest": "backend/api/index.py"
+      "dest": "https://skillbridge-india-9zpl.onrender.com/health"
     },
     {
       "src": "/docs",
-      "dest": "backend/api/index.py"
+      "dest": "https://skillbridge-india-9zpl.onrender.com/docs"
     },
     {
       "src": "/openapi.json",
-      "dest": "backend/api/index.py"
+      "dest": "https://skillbridge-india-9zpl.onrender.com/openapi.json"
     },
     {
       "handle": "filesystem"

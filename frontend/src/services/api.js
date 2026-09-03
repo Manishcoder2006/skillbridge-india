@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : '/api/v1');
+const rawApiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : 'https://skillbridge-india-9zpl.onrender.com/api/v1');
 const API_BASE_URL = rawApiBaseUrl.replace(/\/+$/, '');
 
 export const apiClient = axios.create({

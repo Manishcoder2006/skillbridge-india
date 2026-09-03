@@ -39,7 +39,13 @@ export const AILearningTutor = () => {
       // Refresh past paths list in background
       loadUserPaths();
     } catch (err) {
-      showError('Failed to generate learning path. Please try again.');
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to generate learning path. Please try again.';
+      console.error('Failed to generate learning path:', err);
+      showError(errorMsg);
     } finally {
       setIsLoading(false);
     }
