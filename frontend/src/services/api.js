@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase, isLiveSupabase } from './supabaseClient';
 
 const rawApiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
@@ -12,22 +13,56 @@ export const apiClient = axios.create({
   },
 });
 
-// Request interceptor: Attach Auth Bearer token
+// Request interceptor: Dynamically attach fresh Auth Bearer token
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('sb_auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    let token = localStorage.getItem('sb_auth_token');
+
+    // If live Supabase is active, check active session to prevent sending stale/expired tokens
+    if (isLiveSupabase) {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.access_token) {
+          token = data.session.access_token;
+          localStorage.setItem('sb_auth_token', token);
+        }
+      } catch (e) {
+        // Fall back to existing token in localStorage
+      }
+    }
+
+    if (token && token !== 'undefined' && token !== 'null') {
+      config.headers.Authorization = `Bearer ${token.trim()}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
+// Response interceptor: Auto-refresh session on 401 and retry
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      isLiveSupabase
+    ) {
+      originalRequest._retry = true;
+      try {
+        const { data, error: refreshErr } = await supabase.auth.refreshSession();
+        if (!refreshErr && data?.session?.access_token) {
+          const newToken = data.session.access_token;
+          localStorage.setItem('sb_auth_token', newToken);
+          originalRequest.headers.Authorization = `Bearer ${newToken.trim()}`;
+          return apiClient(originalRequest);
+        }
+      } catch (refreshErr) {
+        console.warn('Session refresh failed:', refreshErr);
+      }
+    }
     return Promise.reject(error);
   }
 );

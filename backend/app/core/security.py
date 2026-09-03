@@ -54,7 +54,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
+    token = credentials.credentials.strip()
 
     # 1. Exact User-Specific Session / ID Token Handler (e.g. session_<UUID>, bearer_<UUID>)
     if token.startswith("session_") or token.startswith("bearer_"):
@@ -81,7 +81,7 @@ async def get_current_user(
         user_email = ""
         user_meta = {}
 
-        # 2A. Try live Supabase Gotrue get_user API
+        # 2A. Live Supabase Gotrue get_user API (Strict signature & expiration validation)
         if db_manager.is_live and db_manager.client:
             try:
                 auth_response = db_manager.client.auth.get_user(token)
@@ -90,17 +90,21 @@ async def get_current_user(
                     user_email = auth_response.user.email or ""
                     user_meta = auth_response.user.user_metadata or {}
             except Exception as e:
-                logger.warning(f"Live Supabase get_user API error: {e}. Decoding JWT locally.")
-
-        # 2B. Direct resilient JWT payload decoding (zero network latency dependency)
-        if not user_id:
+                logger.warning(f"Live Supabase get_user API verification rejected token: {e}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid or expired authentication token.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        elif not db_manager.is_live:
+            # 2B. Direct simulated JWT payload decoding ONLY in offline dev/test mode with strict expiration check
             try:
-                decoded = jwt.decode(token, options={"verify_signature": False})
+                decoded = jwt.decode(token, options={"verify_signature": False, "verify_exp": True})
                 user_id = str(decoded.get("sub"))
                 user_email = decoded.get("email", "")
                 user_meta = decoded.get("user_metadata", {})
             except Exception as e:
-                logger.warning(f"JWT payload decode error: {e}")
+                logger.warning(f"Offline test JWT payload decode error: {e}")
 
         # 2C. Find or synthesize authenticated user profile
         if user_id:
@@ -142,10 +146,13 @@ async def get_current_user(
 
             return AuthenticatedUser(persisted or fallback_profile)
 
-    # 3. Explicit Demo / Test Role Tokens
-    # Demo/Test/Mock token handling (case‑insensitive)
+    # 3. Explicit Demo / Test Role Tokens (strictly requiring demo_token_, test_token_, or mock_token_ prefix)
     token_lower = token.lower()
-    if token_lower.startswith("demo_token_") or token_lower.startswith("test_token_") or token_lower.startswith("mock_token_"):
+    if (
+        token_lower.startswith("demo_token_")
+        or token_lower.startswith("test_token_")
+        or token_lower.startswith("mock_token_")
+    ):
         # Extract role from the token (case‑insensitive)
         requested_role = token_lower.split("_", 2)[-1]
         # Search for an existing mock profile with this role

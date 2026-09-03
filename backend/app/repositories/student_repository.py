@@ -99,7 +99,7 @@ PHASE2_MOCK_STORE = {
         }
     ],
     "learning_resources": [
-        {"id": "f1", "title": "Modern React 18 & State Architecture", "category": "Web Development", "skill_tag": "React", "resource_type": "course", "provider": "SWAYAM / NPTEL", "duration": "4 weeks", "url": "https://swayam.gov.in", "level": "intermediate", "is_free": True, "rating": 4.9},
+        {"id": "f1", "title": "Modern React 18 & Frontend State Architecture", "category": "Web Development", "skill_tag": "React / Frontend", "resource_type": "course", "provider": "SWAYAM / NPTEL", "duration": "4 weeks", "url": "https://swayam.gov.in", "level": "intermediate", "is_free": True, "rating": 4.9},
         {"id": "f2", "title": "FastAPI High-Performance Backend Engineering", "category": "Backend Engineering", "skill_tag": "FastAPI", "resource_type": "tutorial", "provider": "SkillBridge Labs", "duration": "6 hours", "url": "https://fastapi.tiangolo.com", "level": "intermediate", "is_free": True, "rating": 4.8},
         {"id": "f3", "title": "Database Modeling & PostgreSQL Row Level Security", "category": "Databases", "skill_tag": "PostgreSQL", "resource_type": "workshop", "provider": "IIT Delhi Open Courseware", "duration": "3 hours", "url": "https://www.postgresql.org/docs/", "level": "advanced", "is_free": True, "rating": 4.9},
         {"id": "f4", "title": "Python for Algorithmic Problem Solving", "category": "Software Engineering", "skill_tag": "Python", "resource_type": "course", "provider": "AICTE / NEAT Portal", "duration": "8 weeks", "url": "https://neat.aicte-india.org", "level": "intermediate", "is_free": True, "rating": 4.7},
