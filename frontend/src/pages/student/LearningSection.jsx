@@ -20,8 +20,12 @@ import {
   FileText,
 } from 'lucide-react';
 
+import { AILearningTutor } from './learning/AILearningTutor';
+import { Sparkles } from 'lucide-react';
+
 export const LearningSection = () => {
   const { showSuccess, showError } = useToast();
+  const [activeTab, setActiveTab] = useState('ai_tutor'); // 'ai_tutor' | 'curated'
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,23 +78,85 @@ export const LearningSection = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>Curated Learning Resources</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-          Discover official government learning resources (SWAYAM, NPTEL, AICTE NEAT) and industry tutorials to bridge your skill gaps.
-        </p>
+      {/* Top Section Navigation Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.75rem',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '0.75rem',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('ai_tutor')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'ai_tutor' ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' : '#f1f5f9',
+            color: activeTab === 'ai_tutor' ? '#ffffff' : 'var(--text-secondary)',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: activeTab === 'ai_tutor' ? '0 4px 12px rgba(13, 148, 136, 0.3)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Sparkles size={16} color={activeTab === 'ai_tutor' ? '#fde047' : '#0d9488'} />
+          AI Micro-Learning Tutor
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('curated')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'curated' ? 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' : '#f1f5f9',
+            color: activeTab === 'curated' ? '#ffffff' : 'var(--text-secondary)',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: activeTab === 'curated' ? '0 4px 12px rgba(13, 148, 136, 0.3)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <BookOpen size={16} />
+          Curated Resources (NPTEL / SWAYAM)
+        </button>
       </div>
+
+      {/* TAB 1: AI MICRO-LEARNING TUTOR */}
+      {activeTab === 'ai_tutor' && <AILearningTutor />}
+
+      {/* TAB 2: CURATED LEARNING RESOURCES (PRESERVED) */}
+      {activeTab === 'curated' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+              <Spinner size="lg" />
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>Curated Learning Resources</h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: '0.25rem' }}>
+                  Discover official government learning resources (SWAYAM, NPTEL, AICTE NEAT) and industry tutorials to bridge your skill gaps.
+                </p>
+              </div>
 
       {/* Filter and Search Bar */}
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -189,6 +255,11 @@ export const LearningSection = () => {
           </Card>
         ))}
       </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
+

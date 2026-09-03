@@ -511,5 +511,35 @@ export const apiService = {
     const res = await apiClient.get('/interviews/history');
     return res.data;
   },
+
+  // AI Micro-Learning Tutor Methods
+  generateLearningPath: async (payload) => {
+    const res = await apiClient.post('/learning/ai/path', payload);
+    return res.data;
+  },
+
+  getLearningPaths: async () => {
+    const res = await apiClient.get('/learning/ai/paths');
+    return res.data;
+  },
+
+  getLearningPathById: async (pathId) => {
+    const res = await apiClient.get(`/learning/ai/path/${pathId}`);
+    return res.data;
+  },
+
+  askAITutor: async (payload) => {
+    const res = await apiClient.post('/learning/ai/ask', payload);
+    return res.data;
+  },
+
+  updateLessonProgress: async (pathId, lessonNumber, isCompleted = true) => {
+    const res = await apiClient.post('/learning/ai/progress', {
+      path_id: pathId,
+      lesson_number: lessonNumber,
+      is_completed: isCompleted,
+    });
+    return res.data;
+  },
 };
 
