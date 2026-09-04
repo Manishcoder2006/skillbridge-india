@@ -107,6 +107,105 @@ export const apiService = {
     return res.data;
   },
 
+  getMyInstitution: async () => {
+    const res = await apiClient.get('/institutions/my-institution');
+    return res.data;
+  },
+
+  createDepartment: async (payload) => {
+    const res = await apiClient.post('/institutions/departments', payload);
+    return res.data;
+  },
+
+  getInstitutionMembers: async () => {
+    const res = await apiClient.get('/users/institution-members');
+    return res.data;
+  },
+
+  // --------------------------------------------------------------------------
+  // Phase 4: Industry & HR APIs
+  // --------------------------------------------------------------------------
+  getIndustryDashboardSummary: async () => {
+    const res = await apiClient.get('/industry/dashboard-summary');
+    return res.data;
+  },
+
+  getCompanyProfile: async () => {
+    const res = await apiClient.get('/industry/company-profile');
+    return res.data;
+  },
+
+  updateCompanyProfile: async (payload) => {
+    const res = await apiClient.put('/industry/company-profile', payload);
+    return res.data;
+  },
+
+  getCompanyPostings: async () => {
+    const res = await apiClient.get('/industry/postings');
+    return res.data;
+  },
+
+  createPosting: async (payload) => {
+    const res = await apiClient.post('/industry/postings', payload);
+    return res.data;
+  },
+
+  updatePosting: async (postingId, payload) => {
+    const res = await apiClient.put(`/industry/postings/${postingId}`, payload);
+    return res.data;
+  },
+
+  deletePosting: async (postingId) => {
+    const res = await apiClient.delete(`/industry/postings/${postingId}`);
+    return res.data;
+  },
+
+  getCompanyApplications: async (status = null, search = null) => {
+    const params = {};
+    if (status && status !== 'all') params.status = status;
+    if (search) params.search = search;
+    const res = await apiClient.get('/industry/applications', { params });
+    return res.data;
+  },
+
+  updateApplicationStatus: async (applicationId, payload) => {
+    const res = await apiClient.put(`/industry/applications/${applicationId}/status`, payload);
+    return res.data;
+  },
+
+  getCandidateProfile: async (studentId) => {
+    const res = await apiClient.get(`/industry/candidates/${studentId}`);
+    return res.data;
+  },
+
+  getAICandidateMatches: async (opportunityId) => {
+    const res = await apiClient.get(`/industry/matching/${opportunityId}`);
+    return res.data;
+  },
+
+  getAICandidateMatchMultiModel: async (opportunityId, modelMode = 'hybrid') => {
+    const res = await apiClient.post('/ai/industry/candidate-match', {
+      opportunity_id: opportunityId,
+      model_mode: modelMode,
+    });
+    return res.data;
+  },
+
+  getIndustryCollaborationProposals: async () => {
+    const res = await apiClient.get('/industry/collaboration');
+    return res.data;
+  },
+
+  createIndustryCollaborationProposal: async (payload) => {
+    const res = await apiClient.post('/industry/collaboration', payload);
+    return res.data;
+  },
+
+  getIndustryAnalytics: async () => {
+    const res = await apiClient.get('/industry/analytics');
+    return res.data;
+  },
+
   // Student Endpoints (Phase 2)
   getStudentDashboardSummary: async () => {
     const res = await apiClient.get('/student/dashboard-summary');
@@ -576,6 +675,66 @@ export const apiService = {
       lesson_number: lessonNumber,
       is_completed: isCompleted,
     });
+    return res.data;
+  },
+
+  // Phase 6: Institutional Skill Intelligence & Telemetry
+  getInstitutionSkillIntelligence: async () => {
+    const res = await apiClient.get('/institutions/skill-intelligence');
+    return res.data;
+  },
+
+  // Phase 6: Super Admin Platform Governance Methods
+  getAdminOverview: async () => {
+    const res = await apiClient.get('/admin/overview');
+    return res.data;
+  },
+
+  getAdminUsers: async (role = null, search = null) => {
+    const params = {};
+    if (role && role !== 'all') params.role = role;
+    if (search) params.search = search;
+    const res = await apiClient.get('/admin/users', { params });
+    return res.data;
+  },
+
+  updateAdminUserStatus: async (userId, status) => {
+    const res = await apiClient.patch(`/admin/users/${userId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminInstitutions: async () => {
+    const res = await apiClient.get('/admin/institutions');
+    return res.data;
+  },
+
+  getAdminCompanies: async () => {
+    const res = await apiClient.get('/admin/companies');
+    return res.data;
+  },
+
+  updateAdminCompanyStatus: async (companyId, status) => {
+    const res = await apiClient.patch(`/admin/companies/${companyId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminOpportunities: async () => {
+    const res = await apiClient.get('/admin/opportunities');
+    return res.data;
+  },
+
+  updateAdminOpportunityStatus: async (opportunityId, status) => {
+    const res = await apiClient.patch(`/admin/opportunities/${opportunityId}/status`, { status });
+    return res.data;
+  },
+
+  getAdminAITelemetry: async () => {
+    const res = await apiClient.get('/admin/ai-telemetry');
+    return res.data;
+  },
+
+  getAdminNationalSkills: async () => {
+    const res = await apiClient.get('/admin/national-skills');
     return res.data;
   },
 };

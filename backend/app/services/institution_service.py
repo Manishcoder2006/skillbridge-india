@@ -28,4 +28,13 @@ class InstitutionService:
             )
         return institution_repo.create_department(institution_id, payload.model_dump())
 
+    def get_skill_intelligence(self, institution_id: str) -> Dict[str, Any]:
+        inst = institution_repo.get_institution_by_id(institution_id)
+        if not inst:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Institution not found.",
+            )
+        return institution_repo.get_skill_intelligence(institution_id)
+
 institution_service = InstitutionService()

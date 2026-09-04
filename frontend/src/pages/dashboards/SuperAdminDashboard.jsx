@@ -210,7 +210,7 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">Total Registered Users</div>
-                <div className="stat-value">{overview?.total_users || 4}</div>
+                <div className="stat-value">{overview ? overview.total_users : 'Telemetry not available'}</div>
                 <div className="stat-sub">Across All 4 Major Roles</div>
               </div>
             </div>
@@ -221,7 +221,7 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">Verified Institutions</div>
-                <div className="stat-value">{overview?.total_institutions || 4} Registered</div>
+                <div className="stat-value">{overview ? `${overview.total_institutions} Registered` : 'Telemetry not available'}</div>
                 <div className="stat-sub">IITs, NITs, State Universities</div>
               </div>
             </div>
@@ -232,8 +232,8 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">Corporate Partners</div>
-                <div className="stat-value">{overview?.total_companies || 3} Enterprises</div>
-                <div className="stat-sub">TCS, Infosys, LTTS, Google</div>
+                <div className="stat-value">{overview ? `${overview.total_companies} Enterprises` : 'Telemetry not available'}</div>
+                <div className="stat-sub">Industry Partners</div>
               </div>
             </div>
 
@@ -243,7 +243,7 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">AI Requests Synthesized</div>
-                <div className="stat-value">{overview?.ai_requests_processed || 154}</div>
+                <div className="stat-value">{overview ? overview.ai_requests_processed : 'Telemetry not available'}</div>
                 <div className="stat-sub">Gemini 1.5 + Groq LPU</div>
               </div>
             </div>
@@ -259,7 +259,7 @@ export const SuperAdminDashboard = () => {
                     <span className="text-xs font-semibold">FastAPI Backend API</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
-                    Operational (v1.0.0)
+                    {overview?.platform_health ? `${overview.platform_health} (v1.0.0)` : 'Operational (v1.0.0)'}
                   </span>
                 </div>
 
@@ -269,7 +269,7 @@ export const SuperAdminDashboard = () => {
                     <span className="text-xs font-semibold">PostgreSQL RLS Tenant Policies</span>
                   </div>
                   <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 rounded">
-                    14 Tables Enforced
+                    {overview?.rls_isolation_status || '14 Tables Enforced'}
                   </span>
                 </div>
 
@@ -287,35 +287,56 @@ export const SuperAdminDashboard = () => {
 
             <Card title="Ecosystem Role Distribution">
               <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Engineering Students</span>
-                    <span className="text-primary-600 font-bold">{overview?.total_students || 1} Active Profiles</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-primary-600 h-full rounded-full" style={{ width: '45%' }}></div>
-                  </div>
-                </div>
+                {overview ? (
+                  <>
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span>Engineering Students</span>
+                        <span className="text-primary-600 font-bold">{overview.total_students} Active Profiles</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-primary-600 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${overview.total_users > 0 ? Math.round((overview.total_students / overview.total_users) * 100) : 0}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Academician & Faculty</span>
-                    <span className="text-indigo-600 font-bold">{overview?.total_academicians || 1} Registered</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-indigo-600 h-full rounded-full" style={{ width: '30%' }}></div>
-                  </div>
-                </div>
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span>Academician & Faculty</span>
+                        <span className="text-indigo-600 font-bold">{overview.total_academicians} Registered</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-indigo-600 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${overview.total_users > 0 ? Math.round((overview.total_academicians / overview.total_users) * 100) : 0}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
 
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span>Industry / Corporate HR</span>
-                    <span className="text-amber-600 font-bold">{overview?.total_industry_hr || 1} Recruiters</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-amber-600 h-full rounded-full" style={{ width: '25%' }}></div>
-                  </div>
-                </div>
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span>Industry / Corporate HR</span>
+                        <span className="text-amber-600 font-bold">{overview.total_industry_hr} Recruiters</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-amber-600 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${overview.total_users > 0 ? Math.round((overview.total_industry_hr / overview.total_users) * 100) : 0}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-6 text-xs text-slate-500">Telemetry not available</div>
+                )}
               </div>
             </Card>
           </div>
@@ -541,7 +562,7 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">Average Latency</div>
-                <div className="stat-value">{aiTelemetry?.average_latency_ms || 115} ms</div>
+                <div className="stat-value">{aiTelemetry ? `${aiTelemetry.average_latency_ms} ms` : 'Telemetry not available'}</div>
                 <div className="stat-sub">High-Speed LPU + REST Response</div>
               </div>
             </div>
@@ -563,7 +584,11 @@ export const SuperAdminDashboard = () => {
               </div>
               <div className="stat-content">
                 <div className="stat-title">Token Consumption</div>
-                <div className="stat-value">{aiTelemetry?.estimated_tokens_consumed?.toLocaleString() || '102,400'}</div>
+                <div className="stat-value">
+                  {aiTelemetry?.estimated_tokens_consumed != null
+                    ? aiTelemetry.estimated_tokens_consumed.toLocaleString()
+                    : 'Telemetry not available'}
+                </div>
                 <div className="stat-sub">Context Sanitized & Stripped</div>
               </div>
             </div>
@@ -571,32 +596,36 @@ export const SuperAdminDashboard = () => {
 
           <Card title="Live Multi-Model Execution Stream">
             <div className="space-y-2">
-              {(aiTelemetry?.recent_execution_logs || []).map((log) => (
-                <div
-                  key={log.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <Bot className="w-4 h-4 text-amber-500" />
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        {log.task_type.replace('_', ' ').toUpperCase()}
+              {aiTelemetry?.recent_execution_logs && aiTelemetry.recent_execution_logs.length > 0 ? (
+                aiTelemetry.recent_execution_logs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bot className="w-4 h-4 text-amber-500" />
+                      <div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          {log.task_type.replace('_', ' ').toUpperCase()}
+                        </span>
+                        <span className="text-slate-500 text-[11px] ml-2">
+                          Role: {log.role} • Model: {log.primary_model}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">
+                        {log.latency_ms}ms
                       </span>
-                      <span className="text-slate-500 text-[11px] ml-2">
-                        Role: {log.role} • Model: {log.primary_model}
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                        {log.status}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">
-                      {log.latency_ms}ms
-                    </span>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                      {log.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <div className="text-center py-6 text-xs text-slate-500">No AI execution logs recorded yet.</div>
+              )}
             </div>
           </Card>
         </div>

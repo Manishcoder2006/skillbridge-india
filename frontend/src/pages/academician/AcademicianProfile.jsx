@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Spinner } from '../../components/common/Spinner';
 import {
-  User,
+  RolePageHeader,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
+import {
   ShieldCheck,
   Building2,
-  BookOpen,
-  Award,
   Lock,
   Save,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   Layers,
+  GraduationCap,
+  Award,
+  Phone,
+  User,
 } from 'lucide-react';
 
 export const AcademicianProfile = () => {
@@ -44,6 +48,7 @@ export const AcademicianProfile = () => {
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setErrorMessage('');
       const data = await apiService.getAcademicianProfile();
       setProfile(data);
       setFormData({
@@ -58,7 +63,7 @@ export const AcademicianProfile = () => {
       });
     } catch (err) {
       console.error('Failed to load profile:', err);
-      setErrorMessage('Failed to load academician profile.');
+      setErrorMessage('Failed to load academician profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -96,133 +101,147 @@ export const AcademicianProfile = () => {
 
       const updated = await apiService.updateAcademicianProfile(payload);
       setProfile(updated);
-      setSuccessMessage('Faculty profile updated successfully!');
+      setSuccessMessage('Faculty credentials updated successfully!');
       setTimeout(() => setSuccessMessage(''), 4000);
     } catch (err) {
       console.error('Failed to update profile:', err);
-      setErrorMessage('Failed to save profile changes.');
+      setErrorMessage('Failed to save profile changes. Please verify all inputs.');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingState message="Loading faculty credentials and institutional affiliations..." />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '1000px', margin: '0 auto' }}>
-      {/* Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-          <Badge variant="primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-            Faculty Identity & Credentials
-          </Badge>
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-            PS 26044 Multi-Tenant Verified
-          </span>
-        </div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-          Faculty Profile & Academic Credentials
-        </h1>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-          Maintain your institutional academic information, research domains, and contact credentials.
-        </p>
-      </div>
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title="Faculty Profile & Credentials"
+        subtitle="Institutional Academic Roster"
+        badge={<Badge role="academician" />}
+        description="Maintain your institutional academic credentials, research specializations, and departmental contact points."
+      />
 
+      {/* Success / Error Alerts */}
       {successMessage && (
         <div
           style={{
-            padding: '1rem 1.25rem',
-            borderRadius: '8px',
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid #10b981',
-            color: '#10b981',
+            padding: '0.875rem 1.25rem',
+            borderRadius: '10px',
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            color: '#065f46',
             display: 'flex',
             alignItems: 'center',
             gap: '0.6rem',
             fontWeight: 600,
+            fontSize: '0.875rem',
           }}
         >
-          <CheckCircle2 size={18} /> {successMessage}
+          <CheckCircle2 size={18} color="#059669" /> {successMessage}
         </div>
       )}
 
       {errorMessage && (
-        <div
-          style={{
-            padding: '1rem 1.25rem',
-            borderRadius: '8px',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid #ef4444',
-            color: '#ef4444',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.6rem',
-            fontWeight: 600,
-          }}
-        >
-          <AlertCircle size={18} /> {errorMessage}
-        </div>
+        <ErrorState
+          title="Update Failed"
+          message={errorMessage}
+          onRetry={fetchProfile}
+        />
       )}
 
-      {/* Institutional Security Badge Card (Protected Fields) */}
-      <Card style={{ background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(99, 102, 241, 0.08) 100%)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+      {/* 2. Institutional Tenancy Badge Card (Read-only Scoped Context) */}
+      <div
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '1.25rem 1.5rem',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <ShieldCheck size={20} color="#3b82f6" />
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
-            Verified Institutional Tenancy & Role Security
+          <ShieldCheck size={20} color="#0d9488" />
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+            Verified Institutional Affiliation (Multi-Tenant Scoped)
           </h3>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Assigned Institution</span>
-            <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
-              <Building2 size={14} color="#3b82f6" /> {profile?.institution_name || 'IIT Delhi'}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '0.875rem',
+          }}
+        >
+          <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block' }}>
+              Institution
+            </span>
+            <strong style={{ fontSize: '0.875rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+              <Building2 size={15} color="#0d9488" /> {profile?.institution_name || 'Academic Institution'}
             </strong>
           </div>
 
-          <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Department Scoping</span>
-            <strong style={{ fontSize: '0.9rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem' }}>
-              <Layers size={14} color="#8b5cf6" /> {profile?.department_name || 'Computer Science & Engineering'}
+          <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block' }}>
+              Department
+            </span>
+            <strong style={{ fontSize: '0.875rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+              <Layers size={15} color="#2563eb" /> {profile?.department_name || 'Computer Science & Engineering'}
             </strong>
           </div>
 
-          <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Platform Role</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <Badge variant="success" style={{ textTransform: 'capitalize' }}>
-                {profile?.role || 'Academician'}
-              </Badge>
-              <Lock size={12} color="var(--color-text-muted)" title="Protected field" />
+          <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block' }}>
+              Platform Role
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
+              <Badge role="academician" />
+              <Lock size={12} color="#94a3b8" title="Secured system attribute" />
             </div>
           </div>
 
-          <div style={{ padding: '0.75rem', borderRadius: '8px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>Institutional Verification</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <Badge variant="primary">Verified Faculty</Badge>
+          <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block' }}>
+              Identity Verification
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
+              <Badge status={profile?.verification_status || 'verified'} />
             </div>
           </div>
         </div>
+      </div>
 
-        <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', margin: '0.85rem 0 0', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-          <Lock size={13} /> Institution ID, Department ID, and Verification Status are strictly secured by backend RLS triggers.
-        </p>
-      </Card>
-
-      {/* Profile Edit Form */}
-      <Card>
+      {/* 3. Profile Information Form */}
+      <div
+        style={{
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+        }}
+      >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#0f172a' }}>
+            Academic & Contact Details
+          </h3>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '1.25rem',
+            }}
+          >
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Full Name</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Full Name
+              </label>
               <input
                 type="text"
                 name="full_name"
@@ -230,11 +249,14 @@ export const AcademicianProfile = () => {
                 value={formData.full_name}
                 onChange={handleInputChange}
                 required
+                style={{ minHeight: '42px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Phone Number</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Contact Phone
+              </label>
               <input
                 type="text"
                 name="phone"
@@ -242,23 +264,29 @@ export const AcademicianProfile = () => {
                 value={formData.phone}
                 onChange={handleInputChange}
                 placeholder="+91 98765 43210"
+                style={{ minHeight: '42px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Designation</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Designation / Title
+              </label>
               <input
                 type="text"
                 name="designation"
                 className="form-control"
                 value={formData.designation}
                 onChange={handleInputChange}
-                placeholder="e.g. Professor & Head of Department"
+                placeholder="e.g. Professor & Faculty Advisor"
+                style={{ minHeight: '42px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Specialization Domain</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Specialization Domain
+              </label>
               <input
                 type="text"
                 name="specialization"
@@ -266,23 +294,29 @@ export const AcademicianProfile = () => {
                 value={formData.specialization}
                 onChange={handleInputChange}
                 placeholder="e.g. Distributed Systems & Cloud Architecture"
+                style={{ minHeight: '42px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Qualifications</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Highest Academic Qualification
+              </label>
               <input
                 type="text"
                 name="qualifications"
                 className="form-control"
                 value={formData.qualifications}
                 onChange={handleInputChange}
-                placeholder="e.g. Ph.D. in Computer Science (IIT Delhi)"
+                placeholder="e.g. Ph.D. in Computer Science"
+                style={{ minHeight: '42px' }}
               />
             </div>
 
             <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Teaching / Research Experience (Years)</label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                Experience (Years)
+              </label>
               <input
                 type="number"
                 name="experience_years"
@@ -290,14 +324,15 @@ export const AcademicianProfile = () => {
                 value={formData.experience_years}
                 onChange={handleInputChange}
                 min="0"
-                max="50"
+                max="60"
+                style={{ minHeight: '42px' }}
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 600 }}>
-              Research Interests & Focus Areas <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>(comma-separated)</span>
+          <div className="form-group" style={{ marginTop: '0.5rem' }}>
+            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+              Research Interests & Mentorship Areas <span style={{ fontWeight: 400, color: '#64748b' }}>(comma-separated)</span>
             </label>
             <input
               type="text"
@@ -305,11 +340,12 @@ export const AcademicianProfile = () => {
               className="form-control"
               value={formData.research_interests_input}
               onChange={handleInputChange}
-              placeholder="e.g. Multi-Tenant Cloud Security, Distributed Systems, Verifiable AI Workflows"
+              placeholder="e.g. Cloud Security, Micro-learning, Distributed Databases, AI Orchestration"
+              style={{ minHeight: '42px' }}
             />
           </div>
 
-          {/* Research Tag Preview */}
+          {/* Tag preview */}
           {formData.research_interests_input && (
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
               {formData.research_interests_input
@@ -323,10 +359,10 @@ export const AcademicianProfile = () => {
                       fontSize: '0.78rem',
                       padding: '0.2rem 0.6rem',
                       borderRadius: '6px',
-                      background: 'rgba(99, 102, 241, 0.12)',
-                      color: '#6366f1',
-                      border: '1px solid rgba(99, 102, 241, 0.25)',
-                      fontWeight: 500,
+                      background: '#f0fdf9',
+                      color: '#0d9488',
+                      border: '1px solid #ccfbf1',
+                      fontWeight: 600,
                     }}
                   >
                     #{tag}
@@ -340,14 +376,21 @@ export const AcademicianProfile = () => {
               type="submit"
               className="btn btn-primary"
               disabled={saving}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.5rem', fontWeight: 600 }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                minHeight: '44px',
+                padding: '0 1.5rem',
+                fontWeight: 700,
+              }}
             >
               {saving ? <Spinner size="sm" /> : <Save size={16} />}
-              {saving ? 'Saving Profile...' : 'Save Profile Changes'}
+              {saving ? 'Saving Credentials...' : 'Save Profile Changes'}
             </button>
           </div>
         </form>
-      </Card>
+      </div>
     </div>
   );
 };

@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Spinner } from '../../components/common/Spinner';
+import {
+  RolePageHeader,
+  RoleStatCard,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 import {
   BarChart3,
   TrendingUp,
@@ -20,6 +25,10 @@ import {
 export const StudentAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [aiInsights, setAiInsights] = useState(null);
+  const [runningAI, setRunningAI] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
@@ -28,21 +37,35 @@ export const StudentAnalytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await apiService.getStudentAnalytics();
       setAnalytics(data);
     } catch (err) {
       console.error('Failed to load student analytics:', err);
+      setError('Unable to fetch department analytics. Please ensure backend services are active.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRunAIInsights = async () => {
+    try {
+      setRunningAI(true);
+      const res = await apiService.getAICohortInsights();
+      setAiInsights(res);
+    } catch (err) {
+      console.error('Failed to load AI cohort insights:', err);
+    } finally {
+      setRunningAI(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingState message="Aggregating department skill analytics and cohort metrics..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Analytics Unavailable" message={error} onRetry={fetchAnalytics} />;
   }
 
   const {
@@ -57,108 +80,86 @@ export const StudentAnalytics = () => {
     readiness_distribution = {},
   } = analytics || {};
 
-  const [aiInsights, setAiInsights] = useState(null);
-  const [runningAI, setRunningAI] = useState(false);
-
-  const handleRunAIInsights = async () => {
-    try {
-      setRunningAI(true);
-      const res = await apiService.getAICohortInsights();
-      setAiInsights(res);
-    } catch (err) {
-      console.error('Failed to load AI cohort insights:', err);
-    } finally {
-      setRunningAI(false);
-    }
-  };
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-            <Badge variant="primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-              Department Cohort Intelligence
-            </Badge>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              Computer Science & Engineering • Aggregated Metrics
-            </span>
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-            Student Skill Analytics & Placement Readiness
-          </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-            Departmental insights into student skill proficiencies, assessment metrics, critical skill gaps, and industry readiness tiers.
-          </p>
-        </div>
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title="Student Skill Analytics & Placement Readiness"
+        subtitle="Department Cohort Intelligence"
+        badge={<Badge role="academician" />}
+        description="Comprehensive visibility into student skill proficiencies, assessment metrics, systemic skill gaps, and industry readiness tiers across your department."
+        actions={
+          <button
+            type="button"
+            onClick={handleRunAIInsights}
+            disabled={runningAI}
+            className="btn btn-primary"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              minHeight: '42px',
+              padding: '0 1.25rem',
+              fontWeight: 700,
+            }}
+          >
+            <Sparkles size={16} />
+            {runningAI ? 'Synthesizing Insights...' : 'AI Cohort Insights'}
+          </button>
+        }
+      />
 
-        <button
-          onClick={handleRunAIInsights}
-          disabled={runningAI}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.6rem 1.25rem',
-            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 'var(--radius-md)',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
-          }}
-        >
-          <Sparkles size={16} /> {runningAI ? 'Synthesizing AI Cohort Insights...' : '✨ AI Cohort Pedagogical Insights'}
-        </button>
-      </div>
-
-      {/* AI Pedagogical Insights Panel */}
+      {/* 2. AI Pedagogical Insights Panel (When generated) */}
       {aiInsights && (
         <div
           style={{
-            padding: '1.5rem',
-            background: 'linear-gradient(180deg, #ede9fe 0%, #f8fafc 100%)',
-            border: '1px solid #c7d2fe',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.06)',
+            padding: '1.35rem 1.5rem',
+            background: '#f8fafc',
+            border: '1px solid #ccfbf1',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(13, 148, 136, 0.06)',
+            position: 'relative',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#4f46e5', letterSpacing: '0.05em' }}>
-                AI Academic Diagnostic Report • {aiInsights.ai_meta?.model_used}
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '0.2rem' }}>
-                Cohort Placement Readiness: <span style={{ color: '#0d9488' }}>{aiInsights.mean_readiness_score}% Mean Score</span>
-              </h2>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#0d9488', letterSpacing: '0.04em' }}>
+                AI Cohort Intelligence Report
+              </span>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: '0.2rem 0 0 0' }}>
+                Mean Readiness Score: <span style={{ color: '#0d9488' }}>{aiInsights.mean_readiness_score}%</span>
+              </h3>
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
               Evaluated {aiInsights.total_students_evaluated} Authorized Students
-            </div>
+            </span>
           </div>
 
-          <div className="grid-responsive grid-cols-2" style={{ gap: '1rem' }}>
-            <div style={{ background: '#fffbeb', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #fde68a' }}>
-              <div style={{ fontWeight: 700, color: '#b45309', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <AlertTriangle size={14} /> Systemic Cohort Skill Gaps
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+              gap: '1rem',
+            }}
+          >
+            <div style={{ background: '#fffbeb', padding: '1rem', borderRadius: '8px', border: '1px solid #fef3c7' }}>
+              <div style={{ fontWeight: 700, color: '#b45309', fontSize: '0.85rem', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <AlertTriangle size={15} /> Systemic Cohort Skill Gaps
               </div>
-              <ul style={{ paddingLeft: '1.2rem', color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.6' }}>
+              <ul style={{ paddingLeft: '1.2rem', color: '#334155', fontSize: '0.8rem', lineHeight: '1.55', margin: 0 }}>
                 {aiInsights.critical_cohort_skill_gaps?.map((gap, idx) => (
                   <li key={idx}>
-                    <strong style={{ color: 'var(--text-primary)' }}>{gap.skill}</strong> — {gap.affected_percentage}% of students affected ({gap.severity} severity)
+                    <strong style={{ color: '#0f172a' }}>{gap.skill}</strong> — {gap.affected_percentage}% of students affected
                   </li>
                 ))}
               </ul>
             </div>
 
-            <div style={{ background: '#f0fdf4', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #bbf7d0' }}>
-              <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Brain size={14} /> Recommended Pedagogical Interventions
+            <div style={{ background: '#ecfdf5', padding: '1rem', borderRadius: '8px', border: '1px solid #d1fae5' }}>
+              <div style={{ fontWeight: 700, color: '#065f46', fontSize: '0.85rem', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Brain size={15} /> Pedagogical Interventions
               </div>
-              <ul style={{ paddingLeft: '1.2rem', color: '#1e293b', fontSize: '0.8rem', lineHeight: '1.6' }}>
+              <ul style={{ paddingLeft: '1.2rem', color: '#334155', fontSize: '0.8rem', lineHeight: '1.55', margin: 0 }}>
                 {aiInsights.pedagogical_interventions?.map((rec, idx) => (
                   <li key={idx}>{rec}</li>
                 ))}
@@ -168,60 +169,60 @@ export const StudentAnalytics = () => {
         </div>
       )}
 
-      {/* Top 4 KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #3b82f6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Department Avg CGPA</span>
-            <GraduationCap size={18} color="#3b82f6" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-text)' }}>{average_cgpa}</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Across {total_students} authorized students
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #10b981' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Assessment Score</span>
-            <Brain size={18} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#10b981' }}>{average_assessment_score}%</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Cohort mean test performance
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #8b5cf6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Assessment Participation</span>
-            <Award size={18} color="#8b5cf6" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-text)' }}>{assessment_completion_rate}%</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Verified evaluation attempts
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Learning Progress</span>
-            <TrendingUp size={18} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-text)' }}>{learning_progress_rate}%</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Department course completion
-          </span>
-        </Card>
+      {/* 3. Top 4 KPI Metric Cards */}
+      <div className="portal-stat-grid">
+        <RoleStatCard
+          title="Department CGPA"
+          value={average_cgpa}
+          subtext={`Across ${total_students} students`}
+          icon={GraduationCap}
+          variant="teal"
+        />
+        <RoleStatCard
+          title="Assessment Score"
+          value={`${average_assessment_score}%`}
+          subtext="Cohort mean test score"
+          subtextType="positive"
+          icon={Brain}
+          variant="emerald"
+        />
+        <RoleStatCard
+          title="Participation Rate"
+          value={`${assessment_completion_rate}%`}
+          subtext="Verified evaluations"
+          icon={Award}
+          variant="purple"
+        />
+        <RoleStatCard
+          title="Learning Progress"
+          value={`${learning_progress_rate}%`}
+          subtext="Module completion rate"
+          icon={TrendingUp}
+          variant="blue"
+        />
       </div>
 
-      {/* Main Analytics Grid: Placement Readiness Tiers & Top Skills */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '1.5rem' }}>
-        {/* Industry Placement Readiness Distribution */}
-        <Card>
+      {/* 4. Main Analytics: Readiness Tiers & Top Skills Distribution */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))',
+          gap: '1.25rem',
+        }}
+      >
+        {/* Placement Readiness Tiers */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '1.35rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <PieChart size={18} color="var(--color-primary)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
+            <PieChart size={18} color="#0d9488" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
               Industry Placement Readiness Tiers
             </h3>
           </div>
@@ -229,16 +230,17 @@ export const StudentAnalytics = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* High Readiness */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 600, color: '#10b981' }}>High Placement Ready (70%+ Score)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.825rem' }}>
+                <span style={{ fontWeight: 700, color: '#059669' }}>High Placement Ready (&ge; 70% Score)</span>
                 <strong>{readiness_distribution.high_readiness || 0} Students</strong>
               </div>
-              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
-                    background: '#10b981',
+                    background: '#059669',
                     width: total_students > 0 ? `${((readiness_distribution.high_readiness || 0) / total_students) * 100}%` : '0%',
+                    borderRadius: '4px',
                   }}
                 />
               </div>
@@ -246,171 +248,119 @@ export const StudentAnalytics = () => {
 
             {/* Moderate Readiness */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 600, color: '#f59e0b' }}>Moderate Ready (40-70% Score)</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.825rem' }}>
+                <span style={{ fontWeight: 700, color: '#d97706' }}>Moderate Ready (40–70% Score)</span>
                 <strong>{readiness_distribution.moderate_readiness || 0} Students</strong>
               </div>
-              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
-                    background: '#f59e0b',
+                    background: '#d97706',
                     width: total_students > 0 ? `${((readiness_distribution.moderate_readiness || 0) / total_students) * 100}%` : '0%',
+                    borderRadius: '4px',
                   }}
                 />
               </div>
             </div>
 
-            {/* Critical Upskilling Needed */}
+            {/* Needs Attention */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem', fontSize: '0.85rem' }}>
-                <span style={{ fontWeight: 600, color: '#ef4444' }}>Critical Skill Gaps (&lt;40% Score)</span>
-                <strong>{readiness_distribution.needs_improvement || 0} Students</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', fontSize: '0.825rem' }}>
+                <span style={{ fontWeight: 700, color: '#e11d48' }}>Needs Mentoring (&lt; 40% Score)</span>
+                <strong>{readiness_distribution.needs_attention || 0} Students</strong>
               </div>
-              <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
-                    background: '#ef4444',
-                    width: total_students > 0 ? `${((readiness_distribution.needs_improvement || 0) / total_students) * 100}%` : '0%',
+                    background: '#e11d48',
+                    width: total_students > 0 ? `${((readiness_distribution.needs_attention || 0) / total_students) * 100}%` : '0%',
+                    borderRadius: '4px',
                   }}
                 />
               </div>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Top Department Skills */}
-        <Card>
+        {/* Top Verified Skills & Critical Gaps */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '1.35rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Award size={18} color="var(--color-primary)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
-              Top Cohort Competencies
-            </h3>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {top_department_skills.map((skill, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.75rem 1rem',
-                  borderRadius: '8px',
-                  background: 'var(--color-background)',
-                  border: '1px solid var(--color-border)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div
-                    style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      background: 'rgba(59, 130, 246, 0.1)',
-                      color: 'var(--color-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    {i + 1}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{skill.skill_name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Verified across {skill.verified_count || 0} students</div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <Badge variant="success">Active</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Second Row: Critical Skill Gaps & Semester Distribution */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: '1.5rem' }}>
-        {/* Critical Skill Gaps */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <AlertTriangle size={18} color="#ef4444" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
-              Top Identified Skill Gaps (Curriculum Action Areas)
+            <BarChart3 size={18} color="#2563eb" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+              Cohort Skill Distribution & Deficits
             </h3>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {top_skill_gaps.map((gap, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: '8px',
-                  background: 'rgba(239, 68, 68, 0.04)',
-                  border: '1px solid rgba(239, 68, 68, 0.15)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <span style={{ fontWeight: 700, color: '#ef4444', fontSize: '0.9rem' }}>{gap.skill_gap}</span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'block', marginTop: '0.15rem' }}>
-                    Detected in {gap.affected_students} student evaluations
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block', marginBottom: '0.4rem' }}>
+                Top Verified Proficiencies
+              </span>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {top_verified_skills && top_verified_skills.length > 0 ? (
+                  top_verified_skills.map((sk, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        fontSize: '0.78rem',
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '6px',
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #dbeafe',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {sk.skill || sk} ({sk.count || sk.proficiency || 'Verified'})
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>No verified skill records yet.</span>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#e11d48', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'block', marginBottom: '0.4rem' }}>
+                Systemic Skill Deficits Requiring Curriculum Focus
+              </span>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {top_skill_gaps && top_skill_gaps.length > 0 ? (
+                  top_skill_gaps.map((gap, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        fontSize: '0.78rem',
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: '6px',
+                        background: '#fff1f2',
+                        color: '#e11d48',
+                        border: '1px solid #fecdd3',
+                        fontWeight: 600,
+                      }}
+                    >
+                      ⚠️ {gap.skill || gap}
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ fontSize: '0.8rem', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <CheckCircle2 size={14} /> No widespread skill deficits reported.
                   </span>
-                </div>
-                <Badge variant="danger">Intervention Needed</Badge>
+                )}
               </div>
-            ))}
+            </div>
           </div>
-        </Card>
-
-        {/* Semester Distribution */}
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Layers size={18} color="#8b5cf6" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
-              Cohort Distribution by Semester
-            </h3>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: '1rem', marginTop: '0.5rem' }}>
-            {Object.entries(semester_distribution).map(([sem, count]) => (
-              <div
-                key={sem}
-                style={{
-                  padding: '1.25rem 1rem',
-                  borderRadius: '10px',
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  textAlign: 'center',
-                }}
-              >
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 600 }}>
-                  Semester {sem}
-                </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)', margin: '0.35rem 0' }}>
-                  {count}
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                  {total_students > 0 ? Math.round((count / total_students) * 100) : 0}% of cohort
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-              All metrics update dynamically when students take assessments or complete learning modules.
-            </span>
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

@@ -63,3 +63,21 @@ async def create_institution_department(
             detail="Cannot add department without an associated institution.",
         )
     return institution_service.add_department(current_user.institution_id, payload)
+
+@router.get("/skill-intelligence", tags=["Institutions"])
+async def get_institution_skill_intelligence(
+    current_user: AuthenticatedUser = Depends(
+        require_roles([UserRole.INSTITUTION_ADMIN, UserRole.SUPER_ADMIN])
+    )
+):
+    """
+    Protected endpoint: Returns real aggregated institutional skill intelligence,
+    cohort assessment readiness, strongest competencies, and department comparisons
+    strictly scoped to the authenticated admin's institution.
+    """
+    if not current_user.institution_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot fetch skill intelligence without an associated institution.",
+        )
+    return institution_service.get_skill_intelligence(current_user.institution_id)

@@ -9,32 +9,56 @@ import {
   PieChart,
   Layers,
   ArrowUpRight,
+  RefreshCw,
+  Clock,
+  Compass,
 } from 'lucide-react';
+import {
+  RolePageHeader,
+  RoleStatCard,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 
 export const IndustryAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchAnalytics = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      const data = await apiService.getIndustryAnalytics();
+      setAnalytics(data);
+    } catch (err) {
+      console.error('Failed to load recruitment analytics:', err);
+      setError('Unable to load corporate recruitment analytics.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchAnalytics();
   }, []);
 
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const data = await apiService.getIndustryAnalytics();
-      setAnalytics(data);
-    } catch (err) {
-      console.error('Failed to load recruitment analytics:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
+    return <LoadingState message="Aggregating recruitment funnel and skill demand analytics..." />;
+  }
+
+  if (error && !analytics) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      <div className="portal-page">
+        <ErrorState
+          title="Recruitment Analytics Unavailable"
+          message={error}
+          onRetry={() => fetchAnalytics()}
+        />
       </div>
     );
   }
@@ -42,155 +66,245 @@ export const IndustryAnalytics = () => {
   const funnel = analytics?.recruitment_funnel || {};
   const statusDist = analytics?.status_breakdown || {};
   const totalApps = analytics?.total_applications_received || 0;
+  const inDemandSkills = analytics?.top_in_demand_skills || [];
+  const shortlistCount = funnel.shortlisted || statusDist.shortlisted || 0;
+  const shortlistRate = totalApps > 0 ? Math.round((shortlistCount / totalApps) * 100) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="portal-page">
       {/* 1. Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Corporate Recruitment Analytics</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Hiring pipeline funnel metrics, applicant conversion rates, and skill requirement distributions for {analytics?.company_name}.
+      <RolePageHeader
+        title="Corporate Recruitment Analytics"
+        subtitle={`Enterprise Talent Analytics • ${analytics?.company_name || 'Organization'}`}
+        description="Recruitment pipeline progression, hiring funnel conversion, applicant status distribution, and technical skill requirement benchmarks."
+        actions={
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button
+              className="portal-btn secondary"
+              onClick={() => fetchAnalytics(true)}
+              disabled={refreshing}
+            >
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Syncing...' : 'Refresh'}
+            </button>
+          </div>
+        }
+      />
+
+      {/* 2. Top Metric Cards */}
+      <div className="portal-stat-grid">
+        <RoleStatCard
+          title="Total Applications"
+          value={totalApps}
+          subtext="Cumulative Candidate Inflow"
+          icon={Users}
+          variant="blue"
+        />
+        <RoleStatCard
+          title="Job Vacancies Posted"
+          value={analytics?.total_job_postings || 0}
+          subtext="Full-Time Engineering Openings"
+          icon={Briefcase}
+          variant="teal"
+        />
+        <RoleStatCard
+          title="Internship Postings"
+          value={analytics?.total_internship_postings || 0}
+          subtext="University Cohort Positions"
+          icon={TrendingUp}
+          variant="purple"
+        />
+        <RoleStatCard
+          title="Candidate Shortlist Rate"
+          value={`${shortlistRate}%`}
+          subtext={`${shortlistCount} Shortlisted`}
+          subtextType="positive"
+          icon={CheckCircle2}
+          variant="emerald"
+        />
+      </div>
+
+      {/* 3. Recruitment Pipeline Funnel Visualization */}
+      <div className="portal-card">
+        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.35rem 0' }}>
+          Recruitment Conversion Funnel
+        </h3>
+        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+          Hiring progression stages across all published job and internship openings.
         </p>
+
+        <div className="portal-funnel">
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">1. Applied</div>
+            <div className="portal-funnel-value">{funnel.applied ?? totalApps}</div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem' }}>100% Inflow</div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">2. Under Review</div>
+            <div className="portal-funnel-value" style={{ color: '#b45309' }}>
+              {funnel.under_review ?? 0}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem' }}>
+              {totalApps > 0 ? Math.round(((funnel.under_review || 0) / totalApps) * 100) : 0}% of Total
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">3. Shortlisted</div>
+            <div className="portal-funnel-value" style={{ color: '#6d28d9' }}>
+              {funnel.shortlisted ?? 0}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem' }}>
+              {totalApps > 0 ? Math.round(((funnel.shortlisted || 0) / totalApps) * 100) : 0}% of Total
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">4. Interview</div>
+            <div className="portal-funnel-value" style={{ color: '#0f766e' }}>
+              {funnel.interview ?? 0}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem' }}>
+              {totalApps > 0 ? Math.round(((funnel.interview || 0) / totalApps) * 100) : 0}% of Total
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">5. Selected</div>
+            <div className="portal-funnel-value" style={{ color: '#15803d' }}>
+              {funnel.selected ?? 0}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem' }}>
+              {totalApps > 0 ? Math.round(((funnel.selected || 0) / totalApps) * 100) : 0}% Hired
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* 2. Top Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Applications</span>
-            <Users className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white">{totalApps}</div>
-          <p className="text-xs text-slate-500 mt-1">Across all posted openings</p>
-        </div>
+      {/* 4. Two-Column Analytics: Status Breakdown + Top In-Demand Skills */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        {/* Left: Application Status Distribution */}
+        <div className="portal-card">
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <PieChart size={18} color="#0d9488" />
+            Application Status Breakdown
+          </h3>
 
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Job Roles Posted</span>
-            <Briefcase className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white">{analytics?.total_job_postings || 0}</div>
-          <p className="text-xs text-slate-500 mt-1">Full-time opportunities</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Internship Roles</span>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-3xl font-bold text-slate-900 dark:text-white">{analytics?.total_internship_postings || 0}</div>
-          <p className="text-xs text-slate-500 mt-1">Student internships</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Candidate Conversion</span>
-            <CheckCircle2 className="w-4 h-4 text-purple-500" />
-          </div>
-          <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {totalApps > 0 ? Math.round(((funnel.shortlisted || 0) / totalApps) * 100) : 0}%
-          </div>
-          <p className="text-xs text-slate-500 mt-1">Shortlist rate</p>
-        </div>
-      </div>
-
-      {/* 3. Middle Grid: Funnel & Skills Distribution */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recruitment Pipeline Funnel */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-primary-600" /> Hiring Pipeline Funnel
-            </h2>
-            <span className="text-xs text-slate-400">Live Status</span>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              { label: 'Total Received (Applied)', count: funnel.total_applied || 0, color: 'bg-blue-500' },
-              { label: 'Under Review', count: funnel.under_review || 0, color: 'bg-amber-500' },
-              { label: 'Shortlisted', count: funnel.shortlisted || 0, color: 'bg-emerald-500' },
-              { label: 'Interview Scheduled', count: funnel.interviewed || 0, color: 'bg-cyan-500' },
-              { label: 'Selected / Offers', count: funnel.offered_or_selected || 0, color: 'bg-purple-500' },
-            ].map((stage) => {
-              const pct = totalApps > 0 ? Math.round((stage.count / totalApps) * 100) : 0;
-              return (
-                <div key={stage.label} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{stage.label}</span>
-                    <span className="font-bold text-slate-900 dark:text-white">
-                      {stage.count} <span className="text-slate-400 font-normal">({pct}%)</span>
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                    <div className={`h-full ${stage.color}`} style={{ width: `${pct}%` }}></div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Top In-Demand Skills */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600" /> Top Hiring Skill Requirements
-            </h2>
-            <span className="text-xs text-slate-400">Requirements Count</span>
-          </div>
-
-          <div className="space-y-3">
-            {analytics?.top_in_demand_skills?.map((item) => (
-              <div
-                key={item.skill}
-                className="p-3 bg-slate-50 dark:bg-slate-700/40 rounded-lg border border-slate-200/60 dark:border-slate-700 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary-500"></div>
-                  <span className="text-xs font-bold text-slate-900 dark:text-white">{item.skill}</span>
-                </div>
-                <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded">
-                  {item.postings_requiring} Openings
-                </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {Object.entries(statusDist).length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
+                No status records available yet.
               </div>
-            ))}
+            ) : (
+              Object.entries(statusDist).map(([statusKey, count]) => {
+                const pct = totalApps > 0 ? Math.round((count / totalApps) * 100) : 0;
+                return (
+                  <div key={statusKey}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 600, color: '#334155', textTransform: 'capitalize' }}>
+                        {statusKey.replace('_', ' ')}
+                      </span>
+                      <span style={{ color: '#64748b' }}>
+                        {count} ({pct}%)
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: 6, background: '#f1f5f9', borderRadius: 9999, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${pct}%`,
+                          height: '100%',
+                          background:
+                            statusKey === 'selected'
+                              ? '#15803d'
+                              : statusKey === 'interview'
+                              ? '#0d9488'
+                              : statusKey === 'shortlisted'
+                              ? '#7c3aed'
+                              : statusKey === 'under_review'
+                              ? '#d97706'
+                              : statusKey === 'rejected'
+                              ? '#dc2626'
+                              : '#2563eb',
+                          borderRadius: 9999,
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Right: Top In-Demand Skills */}
+        <div className="portal-card">
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Layers size={18} color="#0d9488" />
+            Top Skill Requirements in Postings
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {inDemandSkills.length === 0 ? (
+              <div style={{ color: '#64748b', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>
+                Skill demand data will appear as positions are published with required skill tags.
+              </div>
+            ) : (
+              inDemandSkills.map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: '0.75rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        background: '#f0fdf9',
+                        color: '#0d9488',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {idx + 1}
+                    </span>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>
+                      {item.skill}
+                    </span>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '0.2rem 0.55rem',
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    {item.demand_count} Openings
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
 
-      {/* 4. Posting Performance Table */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white mb-4">Posting Performance Metrics</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 uppercase tracking-wider">
-              <tr>
-                <th className="px-4 py-3 rounded-l-lg">Opportunity Role</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Openings</th>
-                <th className="px-4 py-3">Total Applicants</th>
-                <th className="px-4 py-3 rounded-r-lg">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {analytics?.posting_performance?.map((post, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
-                  <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">{post.title}</td>
-                  <td className="px-4 py-3 uppercase font-bold text-primary-600">{post.type}</td>
-                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{post.openings}</td>
-                  <td className="px-4 py-3 font-bold text-slate-900 dark:text-white">{post.applications_count}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 rounded-full font-semibold text-[10px] capitalize">
-                      {post.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* 5. Source-Level Telemetry Notice (EmptyState) */}
+      <EmptyState
+        icon={Compass}
+        title="Source-Level Candidate Attribution in Progress"
+        description="Candidate source attribution (referrals, direct college placement portals, national hackathon pipelines) will populate once source-level application tracking telemetry is fully enabled."
+      />
     </div>
   );
 };

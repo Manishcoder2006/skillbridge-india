@@ -1,24 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Spinner } from '../../components/common/Spinner';
+import {
+  RolePageHeader,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 import {
   Bell,
   CheckCircle2,
   AlertTriangle,
   Handshake,
   Briefcase,
-  Layers,
-  ArrowRight,
-  Sparkles,
   CheckCheck,
 } from 'lucide-react';
 
 export const NotificationsSection = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filterTab, setFilterTab] = useState('all');
 
   useEffect(() => {
@@ -28,10 +30,12 @@ export const NotificationsSection = () => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await apiService.getFacultyNotifications();
-      setNotifications(data);
+      setNotifications(data || []);
     } catch (err) {
       console.error('Failed to load notifications:', err);
+      setError('Unable to load department notifications. Please verify backend status.');
     } finally {
       setLoading(false);
     }
@@ -60,13 +64,13 @@ export const NotificationsSection = () => {
   const getCategoryIcon = (category) => {
     switch (category) {
       case 'student_update':
-        return <AlertTriangle size={18} color="#f59e0b" />;
+        return <AlertTriangle size={16} color="#d97706" />;
       case 'collaboration':
-        return <Handshake size={18} color="#8b5cf6" />;
+        return <Handshake size={16} color="#7c3aed" />;
       case 'opportunity':
-        return <Briefcase size={18} color="#3b82f6" />;
+        return <Briefcase size={16} color="#2563eb" />;
       default:
-        return <Bell size={18} color="var(--color-primary)" />;
+        return <Bell size={16} color="#0d9488" />;
     }
   };
 
@@ -80,155 +84,176 @@ export const NotificationsSection = () => {
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem', maxWidth: '900px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-            <Badge variant="primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-              Communication & Updates
-            </Badge>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              {unreadCount} Unread Notifications
-            </span>
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-            Faculty Notifications & Broadcasts
-          </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-            Stay informed on student assessment completions, industry announcements, and collaborative opportunities.
-          </p>
-        </div>
-
-        {unreadCount > 0 && (
-          <button
-            className="btn btn-outline"
-            onClick={handleMarkAllRead}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
-          >
-            <CheckCheck size={16} /> Mark All as Read
-          </button>
-        )}
-      </div>
-
-      {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-        {[
-          { id: 'all', label: `All (${notifications.length})` },
-          { id: 'unread', label: `Unread (${unreadCount})` },
-          { id: 'student_update', label: 'Student Alerts' },
-          { id: 'collaboration', label: 'Industry Collab' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setFilterTab(tab.id)}
-            style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '6px',
-              background: filterTab === tab.id ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
-              color: filterTab === tab.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              border: filterTab === tab.id ? '1px solid var(--color-primary)' : '1px solid transparent',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Notifications List */}
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <Spinner size="lg" />
-        </div>
-      ) : filteredNotifs.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: '3rem' }}>
-          <CheckCircle2 size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)' }}>All Caught Up!</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            No notifications in this category.
-          </p>
-        </Card>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredNotifs.map((n) => (
-            <Card
-              key={n.id}
+    <div className="portal-page" style={{ maxWidth: '960px' }}>
+      {/* 1. Header */}
+      <RolePageHeader
+        title="Faculty Notifications & Broadcasts"
+        subtitle={`${unreadCount} Unread Notifications`}
+        badge={<Badge role="academician" />}
+        description="Stay updated with student assessment milestone completions, institutional circulars, and industry collaboration invitations."
+        actions={
+          unreadCount > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={handleMarkAllRead}
               style={{
-                padding: '1.25rem',
-                background: n.is_read ? 'var(--color-surface)' : 'rgba(37, 99, 235, 0.05)',
-                border: n.is_read ? '1px solid var(--color-border)' : '1px solid rgba(37, 99, 235, 0.3)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                minHeight: '42px',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+              }}
+            >
+              <CheckCheck size={16} /> Mark All as Read
+            </button>
+          )
+        }
+      />
+
+      {/* 2. Filter Tabs */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          borderBottom: '1px solid #e2e8f0',
+          paddingBottom: '0.5rem',
+          overflowX: 'auto',
+        }}
+      >
+        {[
+          { id: 'all', label: `All Alerts (${notifications.length})` },
+          { id: 'unread', label: `Unread (${unreadCount})` },
+          { id: 'student_update', label: 'Student Cohort' },
+          { id: 'collaboration', label: 'Industry Collab' },
+        ].map((tab) => {
+          const active = filterTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilterTab(tab.id)}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                background: active ? '#f0fdf9' : 'transparent',
+                color: active ? '#0d9488' : '#64748b',
+                border: active ? '1px solid #ccfbf1' : '1px solid transparent',
+                fontWeight: 700,
+                fontSize: '0.825rem',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                minHeight: '40px',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. Notification List */}
+      {loading ? (
+        <LoadingState message="Loading department notifications and updates..." />
+      ) : error ? (
+        <ErrorState title="Error Loading Notifications" message={error} onRetry={fetchNotifications} />
+      ) : filteredNotifs.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title="No Notifications Found"
+          description={
+            filterTab === 'unread'
+              ? 'You have caught up with all department notifications!'
+              : 'No notifications in this category.'
+          }
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {filteredNotifs.map((notif) => (
+            <div
+              key={notif.id}
+              style={{
+                padding: '1rem 1.25rem',
+                borderRadius: '10px',
+                background: notif.is_read ? '#ffffff' : '#f0fdf9',
+                border: notif.is_read ? '1px solid #e2e8f0' : '1px solid #ccfbf1',
+                boxShadow: '0 1px 2px rgba(15, 23, 42, 0.03)',
                 display: 'flex',
-                gap: '1rem',
+                gap: '0.875rem',
                 alignItems: 'flex-start',
+                transition: 'background 0.15s ease',
               }}
             >
               <div
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'var(--color-bg)',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: notif.is_read ? '#f8fafc' : '#ffffff',
+                  border: notif.is_read ? '1px solid #e2e8f0' : '1px solid #ccfbf1',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  border: '1px solid var(--color-border)',
+                  marginTop: '0.1rem',
                 }}
               >
-                {getCategoryIcon(n.category)}
+                {getCategoryIcon(notif.category)}
               </div>
 
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                      {n.title}
-                    </h3>
-                    {!n.is_read && <Badge variant="primary" style={{ fontSize: '0.7rem' }}>New</Badge>}
-                  </div>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                    {new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.925rem', color: '#0f172a' }}>
+                    {notif.title}
                   </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      {notif.created_at ? new Date(notif.created_at).toLocaleDateString() : 'Recent'}
+                    </span>
+                    {!notif.is_read && (
+                      <span
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          background: '#0d9488',
+                          display: 'inline-block',
+                        }}
+                        title="Unread notification"
+                      />
+                    )}
+                  </div>
                 </div>
 
-                <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: '0.5rem 0 0.85rem' }}>
-                  {n.message}
+                <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.5 }}>
+                  {notif.message}
                 </p>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {n.action_link ? (
-                    <Link
-                      to={n.action_link}
-                      className="btn btn-outline"
-                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                    >
-                      Take Action <ArrowRight size={13} />
-                    </Link>
-                  ) : (
-                    <div />
-                  )}
-
-                  {!n.is_read && (
+                {!notif.is_read && (
+                  <div style={{ marginTop: '0.6rem' }}>
                     <button
-                      onClick={() => handleMarkRead(n.id)}
+                      type="button"
+                      onClick={() => handleMarkRead(notif.id)}
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--color-primary)',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
+                        color: '#0d9488',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
                         cursor: 'pointer',
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
                       }}
                     >
-                      Mark as read
+                      <CheckCircle2 size={13} /> Mark as read
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

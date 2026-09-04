@@ -4,6 +4,7 @@ import App from './App';
 import './styles/index.css';
 import './styles/layout.css';
 import './styles/resume-builder.css';
+import './styles/portal-roles.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

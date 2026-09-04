@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Spinner } from '../../components/common/Spinner';
+import {
+  RolePageHeader,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 import {
   BookOpen,
   Plus,
@@ -12,18 +17,23 @@ import {
   Video,
   FileText,
   Layers,
-  GraduationCap,
   Sparkles,
   CheckCircle2,
   Eye,
   EyeOff,
   X,
   Save,
+  Search,
 } from 'lucide-react';
 
 export const LearningContent = () => {
   const [contentList, setContentList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingContent, setEditingContent] = useState(null);
@@ -50,10 +60,12 @@ export const LearningContent = () => {
   const fetchContent = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await apiService.getFacultyContent();
-      setContentList(data);
+      setContentList(data || []);
     } catch (err) {
       console.error('Failed to load learning content:', err);
+      setError('Unable to fetch curriculum resources. Please check backend connection.');
     } finally {
       setLoading(false);
     }
@@ -83,7 +95,7 @@ export const LearningContent = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this learning resource?')) return;
+    if (!window.confirm('Are you sure you want to remove this learning resource?')) return;
     try {
       await apiService.deleteFacultyContent(id);
       setContentList((prev) => prev.filter((item) => item.id !== id));
@@ -129,78 +141,157 @@ export const LearningContent = () => {
   const getResourceIcon = (type) => {
     switch (type) {
       case 'video':
-        return <Video size={18} color="#ef4444" />;
+        return <Video size={16} color="#e11d48" />;
       case 'pdf':
-        return <FileText size={18} color="#f59e0b" />;
+        return <FileText size={16} color="#d97706" />;
       case 'workshop':
-        return <Layers size={18} color="#8b5cf6" />;
+        return <Layers size={16} color="#7c3aed" />;
       default:
-        return <BookOpen size={18} color="#3b82f6" />;
+        return <BookOpen size={16} color="#2563eb" />;
     }
   };
 
+  const filteredContent = contentList.filter((item) => {
+    const matchesQuery =
+      !searchQuery ||
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.skill_tag?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.category?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      categoryFilter === 'all' || item.category === categoryFilter;
+    return matchesQuery && matchesCategory;
+  });
+
+  const categories = Array.from(new Set(contentList.map((c) => c.category).filter(Boolean)));
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-            <Badge variant="primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-              Curriculum & Skill Enhancement
-            </Badge>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-              Faculty Resource Management
-            </span>
-          </div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-            Curate Learning Resources & Tutorials
-          </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-            Publish workshops, lecture series, industry tutorials, and reading materials for your authorized students.
-          </p>
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title="Curriculum & Learning Content"
+        subtitle="Faculty Resource Repository"
+        badge={<Badge role="academician" />}
+        description="Publish and curate masterclasses, lecture series, industry tutorials, and reading materials for your authorized students."
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleOpenAdd}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              minHeight: '42px',
+              padding: '0 1.25rem',
+              fontWeight: 700,
+            }}
+          >
+            <Plus size={16} /> Add Learning Resource
+          </button>
+        }
+      />
+
+      {/* 2. Search & Category Filters */}
+      <div className="portal-filter-bar">
+        <div className="portal-search-box">
+          <Search size={16} className="portal-search-icon" />
+          <input
+            type="text"
+            className="portal-search-input"
+            placeholder="Search resources by title, skill tag, or domain..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        <button
-          className="btn btn-primary"
-          onClick={handleOpenAdd}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-        >
-          <Plus size={18} /> Add Learning Resource
-        </button>
+        <div className="portal-filter-controls">
+          <select
+            className="portal-filter-select"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="all">All Categories</option>
+            {categories.map((cat, idx) => (
+              <option key={idx} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          {(searchQuery || categoryFilter !== 'all') && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', minHeight: '40px' }}
+              onClick={() => {
+                setSearchQuery('');
+                setCategoryFilter('all');
+              }}
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Resource Cards Grid */}
+      {/* 3. Resource Cards Grid */}
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <Spinner size="lg" />
-        </div>
-      ) : contentList.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: '3rem' }}>
-          <BookOpen size={48} color="var(--color-text-muted)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)' }}>No Resources Published Yet</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            Click "Add Learning Resource" to publish tutorials or workshop links for your students.
-          </p>
-        </Card>
+        <LoadingState message="Loading faculty learning resources and tutorials..." />
+      ) : error ? (
+        <ErrorState title="Error Loading Content" message={error} onRetry={fetchContent} />
+      ) : filteredContent.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="No Learning Resources Found"
+          description={
+            contentList.length === 0
+              ? 'You have not authored any learning modules yet. Click "Add Learning Resource" to publish tutorials or workshop materials.'
+              : 'No resources match your active search or category filter.'
+          }
+          action={
+            contentList.length === 0 ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleOpenAdd}
+                style={{ minHeight: '40px', padding: '0 1rem' }}
+              >
+                <Plus size={15} /> Create First Resource
+              </button>
+            ) : null
+          }
+        />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '1.25rem' }}>
-          {contentList.map((item) => (
-            <Card
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))',
+            gap: '1.25rem',
+            width: '100%',
+          }}
+        >
+          {filteredContent.map((item) => (
+            <div
               key={item.id}
               style={{
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderLeft: item.is_published ? '4px solid #0d9488' : '4px solid #94a3b8',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 gap: '1rem',
-                opacity: item.is_published ? 1 : 0.7,
-                borderLeft: item.is_published ? '4px solid #3b82f6' : '4px solid var(--color-border)',
+                opacity: item.is_published ? 1 : 0.75,
               }}
             >
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     {getResourceIcon(item.resource_type)}
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-primary)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#0d9488', letterSpacing: '0.03em' }}>
                       {item.resource_type}
                     </span>
                   </div>
@@ -208,208 +299,280 @@ export const LearningContent = () => {
                     <Badge variant={item.is_published ? 'success' : 'warning'}>
                       {item.is_published ? 'Published' : 'Draft'}
                     </Badge>
-                    <Badge variant="primary" style={{ textTransform: 'capitalize' }}>
-                      {item.visibility}
-                    </Badge>
                   </div>
                 </div>
 
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: '0.75rem 0 0.35rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0.75rem 0 0.35rem' }}>
                   {item.title}
                 </h3>
 
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.4, margin: '0 0 0.75rem' }}>
-                  {item.description || 'Comprehensive learning module curated by faculty for skill mapping and industry readiness.'}
+                <p style={{ fontSize: '0.825rem', color: '#64748b', lineHeight: 1.45, margin: '0 0 0.75rem' }}>
+                  {item.description || 'Comprehensive learning module curated by faculty for student skill enhancement.'}
                 </p>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
                   <span
                     style={{
-                      fontSize: '0.75rem',
-                      padding: '0.15rem 0.5rem',
+                      fontSize: '0.72rem',
+                      padding: '0.15rem 0.45rem',
                       borderRadius: '4px',
-                      background: 'rgba(99, 102, 241, 0.12)',
-                      color: '#6366f1',
-                      fontWeight: 600,
+                      background: '#f0fdf9',
+                      color: '#0d9488',
+                      fontWeight: 700,
+                      border: '1px solid #ccfbf1',
                     }}
                   >
                     #{item.skill_tag}
                   </span>
-                  <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      background: '#f8fafc',
+                      color: '#475569',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
                     Level: {item.level}
                   </span>
-                  <span style={{ fontSize: '0.75rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px',
+                      background: '#f8fafc',
+                      color: '#475569',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
                     ⏱️ {item.duration}
                   </span>
                 </div>
               </div>
 
+              {/* Action Buttons */}
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  paddingTop: '0.75rem',
-                  borderTop: '1px solid var(--color-border)',
+                  paddingTop: '0.85rem',
+                  borderTop: '1px solid #f1f5f9',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
                 }}
               >
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-outline"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-                >
-                  <ExternalLink size={14} /> Open Resource
-                </a>
-
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   <button
+                    type="button"
                     onClick={() => handleTogglePublish(item)}
-                    className="btn btn-outline"
-                    title={item.is_published ? 'Unpublish Resource' : 'Publish Resource'}
-                    style={{ padding: '0.35rem 0.6rem' }}
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '6px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      color: '#334155',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                    }}
+                    title={item.is_published ? 'Unpublish' : 'Publish'}
                   >
-                    {item.is_published ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {item.is_published ? <EyeOff size={13} /> : <Eye size={13} />}
+                    {item.is_published ? 'Unpublish' : 'Publish'}
                   </button>
+
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '6px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      color: '#0d9488',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                    }}
+                  >
+                    <ExternalLink size={13} /> Open
+                  </a>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.3rem' }}>
                   <button
+                    type="button"
                     onClick={() => handleOpenEdit(item)}
-                    className="btn btn-outline"
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '6px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      color: '#2563eb',
+                      cursor: 'pointer',
+                    }}
                     title="Edit Resource"
-                    style={{ padding: '0.35rem 0.6rem' }}
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={13} />
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleDelete(item.id)}
-                    className="btn btn-outline"
+                    style={{
+                      padding: '0.35rem 0.6rem',
+                      borderRadius: '6px',
+                      background: '#fff1f2',
+                      border: '1px solid #fecdd3',
+                      color: '#e11d48',
+                      cursor: 'pointer',
+                    }}
                     title="Delete Resource"
-                    style={{ padding: '0.35rem 0.6rem', color: '#ef4444' }}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Add / Edit Resource Modal */}
+      {/* 4. Add/Edit Content Modal */}
       {isModalOpen && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(5px)',
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 1000,
-            padding: '1.5rem',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsModalOpen(false);
           }}
         >
           <div
             style={{
-              background: 'var(--color-surface)',
-              borderRadius: '16px',
-              border: '1px solid var(--color-border)',
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
               width: '100%',
-              maxWidth: '650px',
+              maxWidth: '640px',
               maxHeight: '90vh',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             }}
           >
+            {/* Modal Header */}
             <div
               style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid var(--color-border)',
+                padding: '1.15rem 1.35rem',
+                borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'var(--color-bg)',
+                background: '#fafafa',
               }}
             >
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
-                {editingContent ? 'Edit Learning Resource' : 'Add New Learning Resource'}
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                {editingContent ? 'Edit Learning Resource' : 'Publish New Learning Resource'}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  padding: '0.4rem',
+                  borderRadius: '6px',
+                }}
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} style={{ padding: '1.35rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Resource Title</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Resource Title</label>
                 <input
                   type="text"
                   className="form-control"
-                  required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g. Distributed Consensus & Cloud Storage Systems"
+                  placeholder="e.g. Masterclass in High-Performance FastAPI & AsyncIO"
+                  required
+                  style={{ minHeight: '42px' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Category</label>
-                  <select
-                    className="form-control"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  >
-                    <option value="Backend Engineering">Backend Engineering</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Databases">Databases</option>
-                    <option value="Cloud & DevOps">Cloud & DevOps</option>
-                    <option value="Software Engineering">Software Engineering</option>
-                    <option value="System Design">System Design</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Skill Tag</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Domain Category</label>
                   <input
                     type="text"
                     className="form-control"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     required
+                    style={{ minHeight: '42px' }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Primary Skill Tag</label>
+                  <input
+                    type="text"
+                    className="form-control"
                     value={formData.skill_tag}
                     onChange={(e) => setFormData({ ...formData, skill_tag: e.target.value })}
-                    placeholder="e.g. FastAPI, Docker, React"
+                    placeholder="e.g. Python, SQL, Cloud"
+                    required
+                    style={{ minHeight: '42px' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Resource Type</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Resource Type</label>
                   <select
                     className="form-control"
                     value={formData.resource_type}
                     onChange={(e) => setFormData({ ...formData, resource_type: e.target.value })}
+                    style={{ minHeight: '42px' }}
                   >
                     <option value="tutorial">Tutorial</option>
-                    <option value="course">Course</option>
-                    <option value="workshop">Workshop</option>
-                    <option value="video">Video</option>
-                    <option value="pdf">PDF Document</option>
+                    <option value="video">Video Lecture</option>
+                    <option value="pdf">Reading / Paper</option>
+                    <option value="workshop">Interactive Workshop</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Level</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Proficiency Level</label>
                   <select
                     className="form-control"
                     value={formData.level}
                     onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                    style={{ minHeight: '42px' }}
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -418,89 +581,59 @@ export const LearningContent = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Duration</label>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Estimated Duration</label>
                   <input
                     type="text"
                     className="form-control"
                     value={formData.duration}
                     onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                    placeholder="e.g. 4 hours"
+                    placeholder="e.g. 3 hours"
+                    style={{ minHeight: '42px' }}
                   />
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Resource URL</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Resource URL / Material Link</label>
                 <input
                   type="url"
                   className="form-control"
-                  required
                   value={formData.url}
                   onChange={(e) => setFormData({ ...formData, url: e.target.value })}
                   placeholder="https://..."
+                  required
+                  style={{ minHeight: '42px' }}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Description & Learning Objectives</label>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Curator Note / Overview</label>
                 <textarea
                   className="form-control"
-                  rows="3"
+                  rows={3}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Explain why this resource will help bridge student skill gaps..."
+                  placeholder="Instructions for students regarding prerequisites and expected learning outcomes..."
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', alignItems: 'center' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Visibility Scope</label>
-                  <select
-                    className="form-control"
-                    value={formData.visibility}
-                    onChange={(e) => setFormData({ ...formData, visibility: e.target.value })}
-                  >
-                    <option value="department">Department Only (CSE)</option>
-                    <option value="institution">Whole Institution (IIT Delhi)</option>
-                    <option value="public">Public / All Students</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '1.2rem' }}>
-                  <input
-                    type="checkbox"
-                    id="is_published_chk"
-                    checked={formData.is_published}
-                    onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <label htmlFor="is_published_chk" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer' }}>
-                    Publish immediately to students
-                  </label>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '0.75rem',
-                  marginTop: '1rem',
-                  paddingTop: '1rem',
-                  borderTop: '1px solid var(--color-border)',
-                }}
-              >
-                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setIsModalOpen(false)}
+                  style={{ minHeight: '42px' }}
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn btn-primary"
                   disabled={saving}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}
+                  style={{ minHeight: '42px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}
                 >
                   {saving ? <Spinner size="sm" /> : <Save size={16} />}
-                  {saving ? 'Saving...' : editingContent ? 'Update Resource' : 'Create Resource'}
+                  {saving ? 'Saving...' : editingContent ? 'Update Resource' : 'Publish Resource'}
                 </button>
               </div>
             </form>

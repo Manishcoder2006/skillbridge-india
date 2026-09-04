@@ -15,24 +15,30 @@ import {
   Plus,
   X,
   ExternalLink,
+  Edit2,
+  UserCheck,
 } from 'lucide-react';
+import {
+  RolePageHeader,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 
 export const CompanyProfile = () => {
   const [profile, setProfile] = useState(null);
   const [formData, setFormData] = useState({});
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState(null);
   const [error, setError] = useState(null);
   const [newTech, setNewTech] = useState('');
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
   const fetchProfile = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await apiService.getCompanyProfile();
       setProfile(data);
       setFormData({
@@ -41,20 +47,24 @@ export const CompanyProfile = () => {
         description: data.description || '',
         website: data.website || '',
         company_size: data.company_size || '1000-5000',
-        founded_year: data.founded_year || 1968,
-        headquarters_city: data.headquarters_city || 'Mumbai',
-        headquarters_state: data.headquarters_state || 'Maharashtra',
+        founded_year: data.founded_year || 2000,
+        headquarters_city: data.headquarters_city || '',
+        headquarters_state: data.headquarters_state || '',
         contact_email: data.contact_email || '',
         contact_phone: data.contact_phone || '',
         tech_stack: data.tech_stack || [],
       });
     } catch (err) {
       console.error('Failed to load company profile:', err);
-      setError('Unable to load company profile.');
+      setError('Unable to retrieve company profile. Please verify your recruiter credentials.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -86,264 +96,419 @@ export const CompanyProfile = () => {
       setError(null);
       const updated = await apiService.updateCompanyProfile(formData);
       setProfile(updated);
-      setSuccessMsg('Company profile updated successfully!');
+      setIsEditing(false);
+      setSuccessMsg('Corporate profile updated successfully!');
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
       console.error('Failed to update company profile:', err);
-      setError('Failed to update profile. Please check required fields.');
+      setError(err.response?.data?.detail || 'Failed to update company profile. Please check required fields.');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
+    return <LoadingState message="Loading corporate credentials and profile..." />;
+  }
+
+  if (error && !profile) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      <div className="portal-page">
+        <ErrorState
+          title="Profile Load Failure"
+          message={error}
+          onRetry={() => fetchProfile()}
+        />
       </div>
     );
   }
 
-  return (
-    <div className="max-w-5xl space-y-6">
-      {/* 1. Header Card */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center p-3">
-              <Building2 className="w-12 h-12 text-primary-600 dark:text-primary-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{profile?.name}</h1>
-                <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                </span>
-              </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                {profile?.industry_type} • Code: <strong className="font-mono text-slate-700 dark:text-slate-300">{profile?.code}</strong>
-              </p>
-              <div className="flex items-center gap-4 mt-3 text-xs text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  {profile?.headquarters_city}, {profile?.headquarters_state}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  Founded {profile?.founded_year}
-                </span>
-              </div>
-            </div>
-          </div>
+  const isVerified = profile?.verification_status === 'verified';
 
-          <div className="flex items-center gap-2">
+  return (
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title={profile?.name || 'Company Profile'}
+        subtitle={`Corporate Code: ${profile?.code || 'CORP'} • ${profile?.industry_type || 'Technology'}`}
+        description="Official corporate registration details, recruiter contact credentials, and verified technology stack."
+        badge={
+          profile?.code ? (
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '0.2rem 0.65rem',
+                borderRadius: '9999px',
+                background: '#f0fdfa',
+                color: '#0d9488',
+                border: '1px solid #ccfbf1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}
+            >
+              <Building2 size={12} />
+              {profile.code} &bull; {profile.company_type || 'Corporate Partner'}
+            </span>
+          ) : null
+        }
+        actions={
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            {!isEditing ? (
+              <button
+                className="portal-btn primary"
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit2 size={15} />
+                Edit Profile
+              </button>
+            ) : (
+              <button
+                className="portal-btn secondary"
+                onClick={() => {
+                  setIsEditing(false);
+                  fetchProfile();
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+            )}
             {profile?.website && (
               <a
-                href={profile.website}
+                href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+                className="portal-btn secondary"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
               >
-                Website <ExternalLink className="w-3.5 h-3.5" />
+                <span>Website</span>
+                <ExternalLink size={14} />
               </a>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Feedback Messages */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-200 text-sm flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          {successMsg}
+        <div
+          style={{
+            padding: '0.85rem 1rem',
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            color: '#15803d',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <CheckCircle2 size={16} />
+          <span>{successMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600" />
-          {error}
+        <div
+          style={{
+            padding: '0.85rem 1rem',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '8px',
+            color: '#991b1b',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+        >
+          <AlertCircle size={16} />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* 2. Profile Form */}
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-6 sm:p-8 space-y-6">
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Company Information</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Manage your corporate profile, hiring domains, and tech stack.</p>
-        </div>
+      {/* 2. Main Profile Content / Form */}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Corporate Identity & Overview */}
+          <div className="portal-card">
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Building2 size={18} color="#0d9488" />
+              Corporate Identity & Overview
+            </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Company Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              <div className="portal-form-group">
+                <label className="portal-form-label">Company Name *</label>
+                <input
+                  type="text"
+                  name="name"
+                  className="portal-form-input"
+                  value={isEditing ? formData.name : profile?.name || ''}
+                  onChange={handleChange}
+                  required
+                  disabled={!isEditing || saving}
+                />
+              </div>
+
+              <div className="portal-form-group">
+                <label className="portal-form-label">Industry / Sector *</label>
+                <input
+                  type="text"
+                  name="industry_type"
+                  className="portal-form-input"
+                  value={isEditing ? formData.industry_type : profile?.industry_type || ''}
+                  onChange={handleChange}
+                  required
+                  disabled={!isEditing || saving}
+                />
+              </div>
+
+              <div className="portal-form-group">
+                <label className="portal-form-label">Company Size</label>
+                <select
+                  name="company_size"
+                  className="portal-form-input"
+                  value={isEditing ? formData.company_size : profile?.company_size || ''}
+                  onChange={handleChange}
+                  disabled={!isEditing || saving}
+                >
+                  <option value="1-50">1-50 employees (Seed)</option>
+                  <option value="51-200">51-200 employees (Startup)</option>
+                  <option value="201-1000">201-1000 employees (Mid-Market)</option>
+                  <option value="1000-5000">1000-5000 employees (Enterprise)</option>
+                  <option value="5000+">5000+ employees (Global Enterprise)</option>
+                </select>
+              </div>
+
+              <div className="portal-form-group">
+                <label className="portal-form-label">Founded Year</label>
+                <input
+                  type="number"
+                  name="founded_year"
+                  className="portal-form-input"
+                  value={isEditing ? formData.founded_year : profile?.founded_year || ''}
+                  onChange={handleChange}
+                  disabled={!isEditing || saving}
+                />
+              </div>
+
+              <div className="portal-form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="portal-form-label">Company Description</label>
+                <textarea
+                  name="description"
+                  className="portal-form-input portal-form-textarea"
+                  rows={3}
+                  value={isEditing ? formData.description : profile?.description || ''}
+                  onChange={handleChange}
+                  placeholder="Overview of business domain, technology focus, and hiring philosophy..."
+                  disabled={!isEditing || saving}
+                />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Industry Type</label>
-            <input
-              type="text"
-              name="industry_type"
-              value={formData.industry_type}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
+          {/* Headquarters & Talent Acquisition Contact */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+            {/* Location & Web Presence */}
+            <div className="portal-card">
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MapPin size={18} color="#0d9488" />
+                Headquarters & Web Presence
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="portal-form-group">
+                  <label className="portal-form-label">Headquarters City *</label>
+                  <input
+                    type="text"
+                    name="headquarters_city"
+                    className="portal-form-input"
+                    value={isEditing ? formData.headquarters_city : profile?.headquarters_city || ''}
+                    onChange={handleChange}
+                    required
+                    disabled={!isEditing || saving}
+                  />
+                </div>
+
+                <div className="portal-form-group">
+                  <label className="portal-form-label">Headquarters State *</label>
+                  <input
+                    type="text"
+                    name="headquarters_state"
+                    className="portal-form-input"
+                    value={isEditing ? formData.headquarters_state : profile?.headquarters_state || ''}
+                    onChange={handleChange}
+                    required
+                    disabled={!isEditing || saving}
+                  />
+                </div>
+
+                <div className="portal-form-group">
+                  <label className="portal-form-label">Official Website</label>
+                  <input
+                    type="url"
+                    name="website"
+                    className="portal-form-input"
+                    value={isEditing ? formData.website : profile?.website || ''}
+                    onChange={handleChange}
+                    placeholder="https://company.com"
+                    disabled={!isEditing || saving}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Talent Acquisition Contact Credentials */}
+            <div className="portal-card">
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Mail size={18} color="#0d9488" />
+                Talent Acquisition Contact
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="portal-form-group">
+                  <label className="portal-form-label">Contact Email *</label>
+                  <input
+                    type="email"
+                    name="contact_email"
+                    className="portal-form-input"
+                    value={isEditing ? formData.contact_email : profile?.contact_email || ''}
+                    onChange={handleChange}
+                    required
+                    disabled={!isEditing || saving}
+                  />
+                </div>
+
+                <div className="portal-form-group">
+                  <label className="portal-form-label">Contact Phone</label>
+                  <input
+                    type="tel"
+                    name="contact_phone"
+                    className="portal-form-input"
+                    value={isEditing ? formData.contact_phone : profile?.contact_phone || ''}
+                    onChange={handleChange}
+                    placeholder="+91 98765 43210"
+                    disabled={!isEditing || saving}
+                  />
+                </div>
+
+                {profile?.hr_representative && (
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '0.75rem',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                      Designated Recruiter: {profile.hr_representative.full_name}
+                    </div>
+                    <div style={{ color: '#64748b' }}>
+                      Designation: {profile.hr_representative.designation || 'HR Representative'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Company Description</label>
-            <textarea
-              name="description"
-              rows="3"
-              value={formData.description}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+          {/* Technology Stack Tags */}
+          <div className="portal-card">
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Layers size={18} color="#0d9488" />
+              Core Technology Stack
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+              Key technologies, programming languages, and platforms utilized across engineering teams.
+            </p>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Corporate Website</label>
-            <input
-              type="url"
-              name="website"
-              value={formData.website}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+            <div className="portal-tag-group" style={{ marginBottom: isEditing ? '1rem' : 0 }}>
+              {(isEditing ? formData.tech_stack : profile?.tech_stack || []).map((tech) => (
+                <span key={tech} className="portal-tag preferred">
+                  <span>{tech}</span>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTech(tech)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        color: '#64748b',
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </span>
+              ))}
+              {(isEditing ? formData.tech_stack : profile?.tech_stack || []).length === 0 && (
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>No technology stack tags specified.</span>
+              )}
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Company Size (Employees)</label>
-            <select
-              name="company_size"
-              value={formData.company_size}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="1-50">1 - 50 (Early Startup)</option>
-              <option value="51-200">51 - 200 (Growth Stage)</option>
-              <option value="201-1000">201 - 1000 (Mid-Enterprise)</option>
-              <option value="1000-5000">1,000 - 5,000 (Enterprise)</option>
-              <option value="100000+">10,000+ / 100,000+ (MNC)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Headquarters City</label>
-            <input
-              type="text"
-              name="headquarters_city"
-              value={formData.headquarters_city}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Headquarters State</label>
-            <input
-              type="text"
-              name="headquarters_state"
-              value={formData.headquarters_state}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Official HR Contact Email</label>
-            <input
-              type="email"
-              name="contact_email"
-              value={formData.contact_email}
-              onChange={handleChange}
-              required
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">HR Phone</label>
-            <input
-              type="text"
-              name="contact_phone"
-              value={formData.contact_phone}
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-        </div>
-
-        {/* Tech Stack & Core Hiring Domains */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-            Primary Tech Stack & Skill Domains
-          </label>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {formData.tech_stack?.map((tech) => (
-              <span
-                key={tech}
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800 rounded-full text-xs font-medium"
-              >
-                {tech}
+            {isEditing && (
+              <div style={{ display: 'flex', gap: '0.5rem', maxWidth: 400 }}>
+                <input
+                  type="text"
+                  className="portal-form-input"
+                  placeholder="Add skill or technology (e.g. Kubernetes, React)..."
+                  value={newTech}
+                  onChange={(e) => setNewTech(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTech(e);
+                    }
+                  }}
+                />
                 <button
                   type="button"
-                  onClick={() => handleRemoveTech(tech)}
-                  className="hover:text-red-500 transition-colors"
+                  className="portal-btn secondary"
+                  onClick={handleAddTech}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <Plus size={15} />
+                  Add
                 </button>
-              </span>
-            ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 max-w-sm">
-            <input
-              type="text"
-              placeholder="e.g. Kubernetes, React, Python"
-              value={newTech}
-              onChange={(e) => setNewTech(e.target.value)}
-              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs text-slate-900 dark:text-white"
-            />
-            <button
-              type="button"
-              onClick={handleAddTech}
-              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-primary-50 hover:text-primary-600 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add
-            </button>
-          </div>
-        </div>
-
-        {/* Security Notice on Locked Multi-Tenant Badges */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/30 border border-slate-200 dark:border-slate-700 rounded-xl flex items-start gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <ShieldCheck className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="font-semibold text-slate-800 dark:text-slate-200">Institutional Security & Verification</span>
-            <p className="mt-0.5">
-              Corporate entity code, Super Admin verified credentials, and institutional tenancy mapping cannot be altered directly and are secured at the Supabase database level.
-            </p>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-md flex items-center gap-2 disabled:opacity-50 transition-all"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Saving Changes...' : 'Save Profile Changes'}
-          </button>
+          {/* Form Action Footer */}
+          {isEditing && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="portal-btn secondary"
+                onClick={() => {
+                  setIsEditing(false);
+                  fetchProfile();
+                }}
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="portal-btn primary"
+                disabled={saving}
+              >
+                <Save size={16} />
+                {saving ? 'Saving Changes...' : 'Save Profile'}
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </div>

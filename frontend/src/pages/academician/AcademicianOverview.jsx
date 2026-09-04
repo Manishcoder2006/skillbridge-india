@@ -2,9 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
-import { Spinner } from '../../components/common/Spinner';
+import {
+  RolePageHeader,
+  RoleStatCard,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 import {
   Users,
   AlertTriangle,
@@ -15,16 +20,16 @@ import {
   Bell,
   ArrowRight,
   TrendingUp,
-  Award,
   CheckCircle2,
-  Building2,
   Sparkles,
+  ExternalLink,
 } from 'lucide-react';
 
 export const AcademicianOverview = () => {
   const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchSummary();
@@ -33,328 +38,398 @@ export const AcademicianOverview = () => {
   const fetchSummary = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await apiService.getAcademicianSummary();
       setSummary(data);
     } catch (err) {
       console.error('Failed to load academician summary:', err);
+      setError('Unable to load faculty dashboard metrics. Please ensure the backend is running.');
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingState message="Loading faculty dashboard and cohort metrics..." />;
+  }
+
+  if (error) {
+    return <ErrorState title="Dashboard Error" message={error} onRetry={fetchSummary} />;
   }
 
   const academician = summary?.academician || {};
   const metrics = summary?.cohort_metrics || {};
   const needsAttention = summary?.students_needing_attention || [];
-  const activities = summary?.recent_activities || [];
   const notifications = summary?.unread_notifications || [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Top Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(99, 102, 241, 0.15) 100%)',
-          borderRadius: '16px',
-          padding: '2rem',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-              <Badge variant="primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', fontWeight: 600 }}>
-                🎓 Faculty & Department Portal
-              </Badge>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                {academician.department_name} • {academician.institution_name}
-              </span>
-            </div>
-            <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.4rem' }}>
-              Welcome, {academician.full_name || user?.full_name}
-            </h1>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.95rem', maxWidth: '650px', lineHeight: 1.5 }}>
-              Monitor student skill growth, curate learning resources, recommend industry opportunities, and collaborate with corporate partners.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+    <div className="portal-page">
+      {/* 1. Page Header */}
+      <RolePageHeader
+        title={`Welcome, ${academician.full_name || user?.full_name || 'Faculty Member'}`}
+        subtitle={`${academician.department_name || 'Computer Science & Engineering'} • ${academician.institution_name || 'Academic Institution'}`}
+        badge={<Badge role="academician" />}
+        description="Monitor cohort skill proficiency, address diagnostic skill gaps, recommend industry opportunities, and mentor academic batches."
+        actions={
+          <>
             <Link
               to="/dashboard/academician/students"
               className="btn btn-primary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                textDecoration: 'none',
+                minHeight: '42px',
+                padding: '0 1.1rem',
+              }}
             >
               <Users size={16} /> Manage Student Roster
             </Link>
             <Link
               to="/dashboard/academician/content"
               className="btn btn-outline"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                textDecoration: 'none',
+                minHeight: '42px',
+                padding: '0 1.1rem',
+              }}
             >
-              <BookOpen size={16} /> Add Learning Resource
+              <BookOpen size={16} /> Curate Content
             </Link>
-          </div>
-        </div>
+          </>
+        }
+      />
+
+      {/* 2. Key Faculty & Student KPI Metrics Grid */}
+      <div className="portal-stat-grid">
+        <RoleStatCard
+          title="Authorized Students"
+          value={metrics.total_authorized_students || 0}
+          subtext="Enrolled department cohort"
+          icon={Users}
+          variant="blue"
+        />
+        <RoleStatCard
+          title="Requires Attention"
+          value={metrics.students_needing_attention || 0}
+          subtext={metrics.students_needing_attention > 0 ? "Skill deficits detected" : "All students on track"}
+          subtextType={metrics.students_needing_attention > 0 ? "attention" : "positive"}
+          icon={AlertTriangle}
+          variant="rose"
+        />
+        <RoleStatCard
+          title="Assessment Rate"
+          value={`${metrics.assessment_participation_rate || 0}%`}
+          subtext={`Avg score: ${metrics.average_cohort_score || 0}%`}
+          subtextType="positive"
+          icon={Brain}
+          variant="emerald"
+        />
+        <RoleStatCard
+          title="Learning Modules"
+          value={metrics.active_learning_resources || 0}
+          subtext="Faculty curated"
+          icon={BookOpen}
+          variant="purple"
+        />
+        <RoleStatCard
+          title="Opportunity Recs"
+          value={metrics.active_recommendations || 0}
+          subtext="Shared with cohort"
+          icon={Briefcase}
+          variant="amber"
+        />
+        <RoleStatCard
+          title="Industry Initiatives"
+          value={metrics.open_collaborations || 0}
+          subtext="FDPs & partnerships"
+          icon={Handshake}
+          variant="teal"
+        />
       </div>
 
-      {/* Metrics Row (6 Key KPI Cards) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem' }}>
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #3b82f6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Authorized Students</span>
-            <Users size={18} color="#3b82f6" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{metrics.total_authorized_students || 0}</div>
-          <span style={{ fontSize: '0.78rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.35rem' }}>
-            <CheckCircle2 size={12} /> CSE Department Cohort
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #ef4444' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Needs Attention</span>
-            <AlertTriangle size={18} color="#ef4444" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#ef4444' }}>{metrics.students_needing_attention || 0}</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Skill gaps / low assessment
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #10b981' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Assessment Participation</span>
-            <Brain size={18} color="#10b981" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{metrics.assessment_participation_rate || 0}%</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Avg score: {metrics.average_cohort_score || 0}%
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #8b5cf6' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Learning Resources</span>
-            <BookOpen size={18} color="#8b5cf6" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{metrics.active_learning_resources || 0}</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Curated by department
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Opportunity Recs</span>
-            <Briefcase size={18} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{metrics.active_recommendations || 0}</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            Shared with students
-          </span>
-        </Card>
-
-        <Card style={{ padding: '1.25rem', borderLeft: '4px solid #06b6d4' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Industry Initiatives</span>
-            <Handshake size={18} color="#06b6d4" />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)' }}>{metrics.open_collaborations || 0}</div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem', display: 'block' }}>
-            FDPs & Joint R&D
-          </span>
-        </Card>
-      </div>
-
-      {/* Main Grid: Students Needing Attention & Activity Feed */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '1.5rem' }}>
-        {/* Students Needing Attention */}
-        <Card>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      {/* 3. Main Sections: Students Needing Attention & Department Notifications */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 480px), 1fr))',
+          gap: '1.25rem',
+          width: '100%',
+        }}
+      >
+        {/* Students Requiring Academic Attention */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '1.35rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <AlertTriangle size={18} color="#ef4444" />
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
+              <AlertTriangle size={18} color="#e11d48" />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
                 Students Requiring Academic Attention
               </h3>
             </div>
             <Link
               to="/dashboard/academician/students?status=needs_attention"
-              style={{ fontSize: '0.85rem', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}
+              style={{
+                fontSize: '0.8125rem',
+                color: '#0d9488',
+                textDecoration: 'none',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}
             >
-              View all
+              View Roster <ArrowRight size={14} />
             </Link>
           </div>
 
           {needsAttention.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-              <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 0.75rem' }} />
-              <p style={{ margin: 0, fontWeight: 500 }}>All authorized students are currently on track!</p>
-            </div>
+            <EmptyState
+              icon={CheckCircle2}
+              title="All Students On Track"
+              description="No active students have assessment scores below the academic threshold or unresolved critical skill gaps."
+            />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {needsAttention.map((st) => (
                 <div
                   key={st.id}
                   style={{
-                    padding: '1rem',
-                    borderRadius: '10px',
-                    background: 'var(--color-bg)',
-                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    padding: '0.875rem 1rem',
+                    borderRadius: '8px',
+                    background: '#fff1f2',
+                    border: '1px solid #fecdd3',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '1rem',
+                    gap: '0.875rem',
+                    flexWrap: 'wrap',
                   }}
                 >
-                  <div>
+                  <div style={{ minWidth: '180px', flex: '1 1 200px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)' }}>{st.full_name}</span>
-                      <Badge variant="warning" style={{ fontSize: '0.75rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.925rem', color: '#0f172a' }}>
+                        {st.full_name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '0.725rem',
+                          fontWeight: 700,
+                          padding: '0.15rem 0.45rem',
+                          borderRadius: '4px',
+                          background: '#ffffff',
+                          color: '#e11d48',
+                          border: '1px solid #fecdd3',
+                        }}
+                      >
                         Sem {st.current_semester}
-                      </Badge>
+                      </span>
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>
-                      CGPA: <strong>{st.cgpa}</strong> • Last Score:{' '}
-                      <strong style={{ color: '#ef4444' }}>{st.latest_assessment_score}%</strong>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>
+                      CGPA: <strong style={{ color: '#0f172a' }}>{st.cgpa}</strong> • Assessment Score:{' '}
+                      <strong style={{ color: '#e11d48' }}>{st.latest_assessment_score}%</strong>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                      {st.skill_gaps?.map((gap, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            fontSize: '0.7rem',
-                            padding: '0.15rem 0.45rem',
-                            borderRadius: '4px',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            color: '#ef4444',
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                          }}
-                        >
-                          Needs {gap}
-                        </span>
-                      ))}
-                    </div>
+                    {st.skill_gaps && st.skill_gaps.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                        {st.skill_gaps.map((gap, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: '0.7rem',
+                              padding: '0.1rem 0.4rem',
+                              borderRadius: '4px',
+                              background: '#fee2e2',
+                              color: '#991b1b',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Gap: {gap}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Link
                     to={`/dashboard/academician/students?view=${st.id}`}
                     className="btn btn-outline"
-                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                    style={{
+                      fontSize: '0.78rem',
+                      padding: '0.4rem 0.75rem',
+                      textDecoration: 'none',
+                      whiteSpace: 'nowrap',
+                      minHeight: '36px',
+                    }}
                   >
-                    View Record
+                    Inspect Record
                   </Link>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </div>
 
-        {/* Recent Notifications & Activity */}
-        <Card>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        {/* Department Notifications & Quick Actions */}
+        <div
+          style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '1.35rem',
+            boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Bell size={18} color="var(--color-primary)" />
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>
+              <Bell size={18} color="#0d9488" />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
                 Department Announcements & Alerts
               </h3>
             </div>
             <Link
               to="/dashboard/academician/notifications"
-              style={{ fontSize: '0.85rem', color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }}
+              style={{
+                fontSize: '0.8125rem',
+                color: '#0d9488',
+                textDecoration: 'none',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+              }}
             >
-              All notifications ({summary?.unread_notifications_count || 0})
+              All Alerts ({summary?.unread_notifications_count || 0}) <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            {notifications.slice(0, 3).map((notif) => (
-              <div
-                key={notif.id}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: '8px',
-                  background: notif.is_read ? 'var(--color-bg)' : 'rgba(37, 99, 235, 0.06)',
-                  border: notif.is_read ? '1px solid var(--color-border)' : '1px solid rgba(37, 99, 235, 0.25)',
-                  display: 'flex',
-                  gap: '0.75rem',
-                }}
-              >
+          {notifications.length === 0 ? (
+            <EmptyState
+              icon={Bell}
+              title="No Notifications"
+              description="No active announcements or pending academic alerts for your department."
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {notifications.slice(0, 3).map((notif) => (
                 <div
+                  key={notif.id}
                   style={{
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    background: notif.is_read ? 'transparent' : '#3b82f6',
-                    marginTop: '0.4rem',
-                    flexShrink: 0,
+                    padding: '0.85rem 1rem',
+                    borderRadius: '8px',
+                    background: notif.is_read ? '#f8fafc' : '#f0fdf9',
+                    border: notif.is_read ? '1px solid #e2e8f0' : '1px solid #ccfbf1',
+                    display: 'flex',
+                    gap: '0.75rem',
+                    alignItems: 'flex-start',
                   }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-text)' }}>{notif.title}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      {new Date(notif.created_at).toLocaleDateString()}
-                    </span>
+                >
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: notif.is_read ? 'transparent' : '#0d9488',
+                      marginTop: '0.45rem',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                        {notif.title}
+                      </span>
+                      <span style={{ fontSize: '0.725rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        {notif.created_at ? new Date(notif.created_at).toLocaleDateString() : 'Recent'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0', lineHeight: 1.45 }}>
+                      {notif.message}
+                    </p>
                   </div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
-                    {notif.message}
-                  </p>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.6rem' }}>
-              ⚡ Quick Faculty Actions
+          {/* Quick Actions Bar */}
+          <div style={{ marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid #e2e8f0' }}>
+            <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.6rem' }}>
+              Direct Faculty Portals
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.6rem' }}>
               <Link
                 to="/dashboard/academician/analytics"
                 style={{
-                  padding: '0.6rem 0.8rem',
-                  borderRadius: '6px',
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                  fontSize: '0.82rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#0f172a',
+                  fontSize: '0.825rem',
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
+                  gap: '0.5rem',
                   fontWeight: 600,
+                  minHeight: '42px',
                 }}
               >
-                <TrendingUp size={14} color="#10b981" /> Skill Analytics
+                <TrendingUp size={15} color="#0d9488" /> Skill Analytics
               </Link>
               <Link
                 to="/dashboard/academician/collaboration"
                 style={{
-                  padding: '0.6rem 0.8rem',
-                  borderRadius: '6px',
-                  background: 'var(--color-bg)',
-                  border: '1px solid var(--color-border)',
-                  color: 'var(--color-text)',
-                  fontSize: '0.82rem',
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#0f172a',
+                  fontSize: '0.825rem',
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
+                  gap: '0.5rem',
                   fontWeight: 600,
+                  minHeight: '42px',
                 }}
               >
-                <Handshake size={14} color="#8b5cf6" /> Industry Collab
+                <Handshake size={15} color="#2563eb" /> Industry Collab
               </Link>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

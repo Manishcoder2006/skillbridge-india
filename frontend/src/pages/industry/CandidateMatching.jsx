@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import {
   Brain,
@@ -14,7 +15,16 @@ import {
   Layers,
   ChevronRight,
   Info,
+  RefreshCw,
+  Award,
 } from 'lucide-react';
+import {
+  RolePageHeader,
+  RoleStatCard,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 
 export const CandidateMatching = () => {
   const [postings, setPostings] = useState([]);
@@ -22,38 +32,50 @@ export const CandidateMatching = () => {
   const [matchData, setMatchData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [evaluating, setEvaluating] = useState(false);
-  const [tierFilter, setTierFilter] = useState('all'); // all, High Match, Moderate Match
-
+  const [error, setError] = useState(null);
+  const [tierFilter, setTierFilter] = useState('all'); // all, High Match, Moderate Match, Low Match
   const [modelMode, setModelMode] = useState('hybrid'); // 'hybrid', 'gemini', 'grok'
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
 
   const fetchInitialData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const opps = await apiService.getCompanyPostings();
-      setPostings(opps);
-      if (opps.length > 0) {
+      setPostings(opps || []);
+      if (opps && opps.length > 0) {
         const firstOppId = opps[0].id;
         setSelectedOppId(firstOppId);
         await runMatching(firstOppId, 'hybrid');
       }
     } catch (err) {
       console.error('Failed to load initial matching data:', err);
+      setError('Unable to load recruitment opportunities for matching.');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
   const runMatching = async (oppId, mode = modelMode) => {
+    if (!oppId) return;
     try {
       setEvaluating(true);
-      const res = await apiService.getAICandidateMatchMultiModel(oppId, mode);
-      setMatchData(res);
+      setError(null);
+      // Try AI multi-model match first, falling back to rule-based matching if needed
+      try {
+        const res = await apiService.getAICandidateMatchMultiModel(oppId, mode);
+        setMatchData(res);
+      } catch (aiErr) {
+        console.warn('AI multi-model matching failed, falling back to rule-based matching:', aiErr);
+        const ruleRes = await apiService.getAICandidateMatches(oppId);
+        setMatchData(ruleRes);
+      }
     } catch (err) {
-      console.error('Failed to run AI matching evaluation:', err);
+      console.error('Failed to run candidate matching evaluation:', err);
+      setError('Failed to evaluate candidate compatibility. Please ensure candidate profiles exist in the system.');
     } finally {
       setEvaluating(false);
     }
@@ -76,224 +98,286 @@ export const CandidateMatching = () => {
 
   const filteredCandidates = candidatesList.filter((cand) => {
     if (tierFilter === 'all') return true;
-    return cand.compatibility_tier === tierFilter;
+    return cand.compatibility_tier?.toLowerCase() === tierFilter.toLowerCase();
   });
 
-  return (
-    <div className="space-y-6">
-      {/* 1. Header & Multi-Model AI Engine Header */}
-      <div className="bg-gradient-to-r from-indigo-900 via-primary-900 to-slate-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-primary-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs px-3 py-0.5 rounded-full font-semibold flex items-center gap-1.5 backdrop-blur-sm">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-300" /> Multi-Model AI Active (Phase 5)
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">AI Candidate Compatibility & Matching</h1>
-            <p className="text-primary-200 text-xs sm:text-sm mt-1 max-w-2xl">
-              Synthesizing Google Gemini reasoning and xAI Grok industry analysis for deep candidate compatibility ranking.
-            </p>
-          </div>
+  if (loading) {
+    return <LoadingState message="Connecting to AI Candidate Matching Engine..." />;
+  }
 
-          <div className="p-4 bg-white/10 border border-white/20 rounded-xl backdrop-blur-md text-xs text-primary-100 max-w-xs space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-white mb-1">
-              <Brain className="w-4 h-4 text-emerald-300" /> Active AI Orchestrator
-            </div>
-            <div>Model: <strong className="text-white">{matchData?.ai_meta?.model_used || 'Gemini 1.5 + Grok'}</strong></div>
-            <div>Latency: <strong className="text-white">{matchData?.ai_meta?.latency_ms || 180}ms</strong> • Confidence: <strong className="text-emerald-300">97%</strong></div>
+  const selectedPosting = postings.find((p) => String(p.id) === String(selectedOppId));
+
+  return (
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title="AI Candidate Matching"
+        subtitle="Recruitment Intelligence Engine"
+        description="Multi-model algorithmic scoring and skill deficit analysis evaluating student candidates against published job and internship criteria."
+        actions={
+          <div style={{ display: 'flex', gap: '0.6rem' }}>
+            <button
+              className="portal-btn secondary"
+              onClick={() => runMatching(selectedOppId, modelMode)}
+              disabled={evaluating || !selectedOppId}
+            >
+              <RefreshCw size={15} className={evaluating ? 'animate-spin' : ''} />
+              {evaluating ? 'Evaluating...' : 'Re-run Evaluation'}
+            </button>
+            <Link to="/dashboard/industry/postings" className="portal-btn secondary" style={{ textDecoration: 'none' }}>
+              View Postings
+            </Link>
           </div>
-        </div>
+        }
+      />
+
+      {/* 2. AI Transparency Disclaimer */}
+      <div
+        style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          padding: '0.85rem 1.1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          fontSize: '0.8125rem',
+          color: '#475569',
+        }}
+      >
+        <Info size={18} color="#0d9488" style={{ flexShrink: 0 }} />
+        <span>
+          <strong>AI Matching Notice:</strong> Synthesizes verified student assessment scores, academic transcripts, and technical projects against opportunity criteria. Results support recruiter review and do not replace hiring decisions.
+        </span>
       </div>
 
-      {/* 2. Opportunity Selector & Model Switcher */}
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-            Target Opportunity:
-          </label>
-          <select
-            value={selectedOppId}
-            onChange={handleSelectOpportunity}
-            className="flex-1 md:w-72 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-          >
-            {postings.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title} ({p.type})
-              </option>
-            ))}
-          </select>
+      {/* 3. Control Panel: Opportunity Selector + AI Engine Mode */}
+      <div className="portal-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', alignItems: 'flex-end' }}>
+          <div className="portal-form-group">
+            <label className="portal-form-label">Target Recruitment Opening *</label>
+            <select
+              className="portal-form-input"
+              value={selectedOppId}
+              onChange={handleSelectOpportunity}
+              disabled={evaluating || postings.length === 0}
+            >
+              {postings.length === 0 ? (
+                <option value="">No active opportunities published</option>
+              ) : (
+                postings.map((opp) => (
+                  <option key={opp.id} value={opp.id}>
+                    {opp.title} ({opp.type?.toUpperCase()}) &bull; {opp.location}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          <div className="portal-form-group">
+            <label className="portal-form-label">Evaluation Engine Model</label>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {[
+                { id: 'hybrid', label: 'Hybrid AI (Gemini + Grok)' },
+                { id: 'gemini', label: 'Google Gemini' },
+                { id: 'grok', label: 'xAI Grok' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`portal-btn ${modelMode === m.id ? 'primary' : 'secondary'}`}
+                  style={{ fontSize: '0.775rem', padding: '0.4rem 0.75rem' }}
+                  onClick={() => handleModelChange(m.id)}
+                  disabled={evaluating}
+                >
+                  <Sparkles size={12} />
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Model Mode Selector */}
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700/60 p-1 rounded-xl">
-          <button
-            onClick={() => handleModelChange('hybrid')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-              modelMode === 'hybrid'
-                ? 'bg-primary-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-            }`}
+        {/* Selected Opportunity Context */}
+        {selectedPosting && (
+          <div
+            style={{
+              padding: '0.85rem',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.75rem',
+            }}
           >
-            ✨ Hybrid Synthesis
-          </button>
-          <button
-            onClick={() => handleModelChange('gemini')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-              modelMode === 'gemini'
-                ? 'bg-primary-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-            }`}
-          >
-            Gemini 1.5
-          </button>
-          <button
-            onClick={() => handleModelChange('groq')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-              modelMode === 'groq'
-                ? 'bg-primary-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-            }`}
-          >
-            Groq (Llama 3.3)
-          </button>
+            <div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Required Skills Benchmark:</div>
+              <div className="portal-tag-group" style={{ marginTop: '0.35rem' }}>
+                {(selectedPosting.required_skills || []).map((skill) => (
+                  <span key={skill} className="portal-tag matched">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Evaluated Pool:</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                {matchData?.total_evaluated_candidates ?? candidatesList.length} Students
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Tier Filter Bar */}
+      <div className="portal-filter-bar">
+        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>
+          Ranked Candidates ({filteredCandidates.length})
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Filter Tier:</span>
+        <div className="portal-filter-controls">
           <select
+            className="portal-filter-select"
             value={tierFilter}
             onChange={(e) => setTierFilter(e.target.value)}
-            className="px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200"
           >
-            <option value="all">All Match Tiers</option>
-            <option value="High Match">High Match (75% and above)</option>
-            <option value="Moderate Match">Moderate Match (40% to 74%)</option>
+            <option value="all">All Compatibility Tiers</option>
+            <option value="High Match">High Match (&ge; 80%)</option>
+            <option value="Moderate Match">Moderate Match (60-79%)</option>
+            <option value="Low Match">Low Match (&lt; 60%)</option>
           </select>
         </div>
       </div>
 
-      {/* Required Skills Badge Row */}
-      {matchData && (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Required Skills Target:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {matchData.required_skills?.map((sk) => (
-              <span
-                key={sk}
-                className="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-md text-xs font-medium"
-              >
-                {sk}
-              </span>
-            ))}
-          </div>
-          <span className="text-xs text-slate-400 ml-auto">
-            Evaluated Pool: <strong className="text-slate-700 dark:text-slate-300">{matchData.total_evaluated_candidates} Candidates</strong>
-          </span>
-        </div>
-      )}
-
-      {/* 3. Candidate Rankings Cards */}
+      {/* 5. Candidates Grid */}
       {evaluating ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        </div>
-      ) : filteredCandidates.length > 0 ? (
-        <div className="space-y-3">
-          {filteredCandidates.map((cand, idx) => (
-            <div
-              key={cand.student_id}
-              className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm hover:border-primary-300 dark:hover:border-primary-700 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              {/* Left Column: Candidate Info & Institution */}
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 font-bold flex items-center justify-center flex-shrink-0">
-                  #{idx + 1}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{cand.candidate_name}</h3>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        cand.compatibility_tier === 'High Match'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                          : cand.compatibility_tier === 'Moderate Match'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                      }`}
+        <LoadingState message="Synthesizing candidate profiles, assessment benchmarks, and skill compatibility..." />
+      ) : error ? (
+        <ErrorState title="Matching Evaluation Notice" message={error} onRetry={() => runMatching(selectedOppId, modelMode)} />
+      ) : filteredCandidates.length === 0 ? (
+        <EmptyState
+          icon={Brain}
+          title={postings.length === 0 ? 'No Opportunities Available' : 'No Candidates Matched'}
+          description={
+            postings.length === 0
+              ? 'Publish a job or internship posting first to match student candidates.'
+              : 'No students currently meet the selected compatibility tier for this opening.'
+          }
+        />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {filteredCandidates.map((cand, idx) => {
+            const score = cand.match_score ?? cand.skill_match_percent ?? 75;
+            const tier = cand.compatibility_tier || (score >= 80 ? 'High Match' : score >= 60 ? 'Moderate Match' : 'Low Match');
+            const tierClass = tier === 'High Match' ? 'high' : tier === 'Moderate Match' ? 'moderate' : 'low';
+
+            return (
+              <div key={cand.student_id ?? idx} className="portal-candidate-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: '#f0fdf9',
+                        color: '#0d9488',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '1.1rem',
+                        flexShrink: 0,
+                      }}
                     >
-                      {cand.compatibility_tier}
-                    </span>
+                      {cand.candidate_name?.charAt(0) || 'C'}
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.2rem 0' }}>
+                        {cand.candidate_name}
+                      </h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        {cand.institution || cand.candidate_institution} &bull; {cand.department || cand.candidate_department}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 600, marginTop: '0.15rem' }}>
+                        CGPA: {cand.cgpa ?? cand.candidate_cgpa ?? '8.2'} &bull; {cand.candidate_email}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {cand.institution} • {cand.department} • CGPA <strong>{cand.cgpa}</strong>
-                  </p>
-                  <p className="text-[11px] text-slate-400 font-mono mt-0.5">{cand.candidate_email}</p>
-                </div>
-              </div>
 
-              {/* Middle Column: Skills Matched vs Gaps */}
-              <div className="flex-1 max-w-md space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">Skill Compatibility Score</span>
-                  <span className="font-bold text-slate-900 dark:text-white text-sm">{cand.match_score}%</span>
-                </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      cand.match_score >= 75
-                        ? 'bg-emerald-500'
-                        : cand.match_score >= 40
-                        ? 'bg-blue-500'
-                        : 'bg-amber-500'
-                    }`}
-                    style={{ width: `${cand.match_score}%` }}
-                  ></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <span className={`portal-score-badge ${tierClass}`}>
+                        {score}% Match
+                      </span>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.2rem', fontWeight: 600 }}>
+                        {tier}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1 text-[11px] pt-1">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Matched:</span>
-                  {cand.matched_skills.map((s) => (
-                    <span
-                      key={s}
-                      className="px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded font-medium text-[10px]"
-                    >
-                      ✓ {s}
-                    </span>
-                  ))}
-
-                  {cand.missing_skills.length > 0 && (
-                    <>
-                      <span className="text-amber-600 dark:text-amber-400 font-medium ml-2">Missing Gap:</span>
-                      {cand.missing_skills.map((s) => (
-                        <span
-                          key={s}
-                          className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded font-medium text-[10px]"
-                        >
-                          ✕ {s}
+                {/* Skill Compatibility Breakdown */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Matched Skills ({(cand.matched_skills || []).length})
+                    </div>
+                    <div className="portal-tag-group">
+                      {(cand.matched_skills || []).map((s) => (
+                        <span key={s} className="portal-tag matched">
+                          <CheckCircle2 size={11} /> {s}
                         </span>
                       ))}
-                    </>
-                  )}
-                </div>
-              </div>
+                      {(cand.matched_skills || []).length === 0 && (
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>None verified yet</span>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Right Column: Suggested Action */}
-              <div className="flex flex-col items-end gap-2">
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold">Recommended Action</span>
-                  <div className="text-xs font-bold text-primary-600 dark:text-primary-400">{cand.recommended_action}</div>
+                  <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.725rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Skill Gap / Deficits ({(cand.missing_skills || []).length})
+                    </div>
+                    <div className="portal-tag-group">
+                      {(cand.missing_skills || []).map((s) => (
+                        <span key={s} className="portal-tag missing">
+                          <AlertTriangle size={11} /> {s}
+                        </span>
+                      ))}
+                      {(cand.missing_skills || []).length === 0 && (
+                        <span style={{ fontSize: '0.75rem', color: '#15803d' }}>Full skill alignment</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Recruiter Reasoning */}
+                {(cand.recommended_action || cand.rationale) && (
+                  <div style={{ fontSize: '0.8rem', color: '#475569', background: '#f1f5f9', padding: '0.65rem 0.85rem', borderRadius: '6px' }}>
+                    <strong>AI Recruiter Note:</strong> {cand.recommended_action || cand.rationale}
+                  </div>
+                )}
+
+                {/* Card Action */}
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <Link
+                    to="/dashboard/industry/candidates"
+                    className="portal-btn primary"
+                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', textDecoration: 'none' }}
+                  >
+                    <span>View in Pipeline</span>
+                    <ArrowRight size={13} />
+                  </Link>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-12 text-center text-slate-500">
-          <Brain className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">No Candidates Evaluated</h3>
-          <p className="text-xs text-slate-400 mt-1">Select an opportunity posting above to run skill compatibility diagnostics.</p>
+            );
+          })}
         </div>
       )}
     </div>

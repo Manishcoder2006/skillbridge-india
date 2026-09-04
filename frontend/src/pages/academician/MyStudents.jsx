@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiService } from '../../services/api';
-import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
 import { Spinner } from '../../components/common/Spinner';
+import {
+  RolePageHeader,
+  ResponsiveTable,
+  EmptyState,
+  LoadingState,
+} from '../../components/portal';
 import {
   Users,
   Search,
@@ -21,7 +26,6 @@ import {
   FileCheck2,
   Building2,
   Calendar,
-  Sparkles,
 } from 'lucide-react';
 
 export const MyStudents = () => {
@@ -57,7 +61,7 @@ export const MyStudents = () => {
       if (semesterFilter) params.semester = parseInt(semesterFilter, 10);
       if (statusFilter) params.status = statusFilter;
       const data = await apiService.getAuthorizedStudents(params);
-      setStudents(data);
+      setStudents(data || []);
     } catch (err) {
       console.error('Failed to load students:', err);
     } finally {
@@ -96,327 +100,395 @@ export const MyStudents = () => {
     );
   });
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Header */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-          <Badge variant="primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}>
-            Authorized Student Roster
-          </Badge>
-          <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-            Institution & Department Scoped
-          </span>
+  // Columns definition for ResponsiveTable
+  const tableColumns = [
+    {
+      key: 'full_name',
+      header: 'Student Name',
+      isPrimary: true,
+      render: (st) => (
+        <div>
+          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.925rem' }}>{st.full_name}</div>
+          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{st.email}</div>
+          <div style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 600, marginTop: '0.15rem' }}>
+            {st.program}
+          </div>
         </div>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-          My Authorized Students
-        </h1>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginTop: '0.3rem' }}>
-          View, monitor, and mentor students under your academic department. Cross-institution student data is securely isolated.
-        </p>
+      ),
+    },
+    {
+      key: 'current_semester',
+      header: 'Semester',
+      mobileLabel: 'Semester',
+      render: (st) => (
+        <span style={{ fontWeight: 600, color: '#334155' }}>
+          Sem {st.current_semester}
+        </span>
+      ),
+    },
+    {
+      key: 'cgpa',
+      header: 'CGPA',
+      mobileLabel: 'CGPA',
+      render: (st) => (
+        <span style={{ fontWeight: 700, color: '#0f172a' }}>{st.cgpa}</span>
+      ),
+    },
+    {
+      key: 'skills_count',
+      header: 'Verified Skills',
+      mobileLabel: 'Skills',
+      render: (st) => (
+        <span style={{ fontWeight: 600, color: '#2563eb' }}>
+          {st.skills_count} skills
+        </span>
+      ),
+    },
+    {
+      key: 'latest_assessment_score',
+      header: 'Assessment Score',
+      mobileLabel: 'Assessment',
+      render: (st) => {
+        const isLow = st.latest_assessment_score < 70;
+        return (
+          <span style={{ fontWeight: 700, color: isLow ? '#e11d48' : '#059669' }}>
+            {st.latest_assessment_score}%
+          </span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      isBadge: true,
+      render: (st) => {
+        const isAttention = st.latest_assessment_score < 70 || (st.skill_gaps && st.skill_gaps.length > 0);
+        return (
+          <Badge variant={isAttention ? 'warning' : 'success'}>
+            {isAttention ? 'Needs Attention' : 'On Track'}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (st) => (
+        <button
+          type="button"
+          onClick={() => openStudentDetail(st.id)}
+          className="btn btn-outline"
+          style={{
+            fontSize: '0.8rem',
+            padding: '0.4rem 0.8rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            minHeight: '36px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Eye size={14} /> View Record
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="portal-page">
+      {/* 1. Header */}
+      <RolePageHeader
+        title="Authorized Student Roster"
+        subtitle={`${students.length} Students in Department`}
+        badge={<Badge role="academician" />}
+        description="Monitor student skill development, review academic readiness, and provide tailored mentorship interventions. Cross-institution student data is securely isolated."
+      />
+
+      {/* 2. Filter & Search Controls */}
+      <div className="portal-filter-bar">
+        <div className="portal-search-box">
+          <Search size={16} className="portal-search-icon" />
+          <input
+            type="text"
+            className="portal-search-input"
+            placeholder="Search student by name, email, or program..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="portal-filter-controls">
+          <select
+            className="portal-filter-select"
+            value={semesterFilter}
+            onChange={(e) => setSemesterFilter(e.target.value)}
+          >
+            <option value="">All Semesters</option>
+            <option value="2">Semester 2</option>
+            <option value="4">Semester 4</option>
+            <option value="6">Semester 6</option>
+            <option value="8">Semester 8</option>
+          </select>
+
+          <select
+            className="portal-filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="needs_attention">Needs Attention</option>
+            <option value="completed">Assessment Completed</option>
+          </select>
+
+          {(searchQuery || semesterFilter || statusFilter) && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem', minHeight: '40px' }}
+              onClick={() => {
+                setSearchQuery('');
+                setSemesterFilter('');
+                setStatusFilter('');
+              }}
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <Card style={{ padding: '1.25rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-          {/* Search Box */}
-          <div style={{ position: 'relative', flex: '1 1 280px', minWidth: '240px' }}>
-            <Search
-              size={18}
-              style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }}
-            />
-            <input
-              type="text"
-              className="form-control"
-              style={{ paddingLeft: '38px' }}
-              placeholder="Search student name, email, or program..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Filter size={16} color="var(--color-text-muted)" />
-              <select
-                className="form-control"
-                style={{ width: 'auto', padding: '0.45rem 1rem' }}
-                value={semesterFilter}
-                onChange={(e) => setSemesterFilter(e.target.value)}
-              >
-                <option value="">All Semesters</option>
-                <option value="4">Semester 4</option>
-                <option value="6">Semester 6</option>
-                <option value="8">Semester 8</option>
-              </select>
-            </div>
-
-            <select
-              className="form-control"
-              style={{ width: 'auto', padding: '0.45rem 1rem' }}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="needs_attention">Needs Attention</option>
-              <option value="completed">Completed Assessment</option>
-            </select>
-
-            {(searchQuery || semesterFilter || statusFilter) && (
+      {/* 3. Responsive Table & Mobile Cards */}
+      {loading ? (
+        <LoadingState message="Loading authorized student records from institutional database..." />
+      ) : filteredStudents.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No Students Found"
+          description="No student records match your active search or filter criteria in your academic department."
+          action={
+            (searchQuery || semesterFilter || statusFilter) && (
               <button
+                type="button"
                 className="btn btn-outline"
-                style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem' }}
                 onClick={() => {
                   setSearchQuery('');
                   setSemesterFilter('');
                   setStatusFilter('');
                 }}
               >
-                Reset Filters
+                Clear Filters
               </button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Student List / Cards */}
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <Spinner size="lg" />
-        </div>
-      ) : filteredStudents.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: '3rem' }}>
-          <Users size={48} color="var(--color-text-muted)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-text)' }}>No Authorized Students Found</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-            No student records matched your filter criteria in your department.
-          </p>
-        </Card>
+            )
+          }
+        />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '1.25rem' }}>
-          {filteredStudents.map((st) => {
+        <ResponsiveTable
+          columns={tableColumns}
+          data={filteredStudents}
+          title={`Enrolled Students (${filteredStudents.length})`}
+          renderMobileCard={(st) => {
             const hasGaps = st.skill_gaps && st.skill_gaps.length > 0;
             const isAttention = st.latest_assessment_score < 70;
-
             return (
-              <Card
-                key={st.id}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
-                  borderTop: isAttention ? '3px solid #ef4444' : '3px solid #10b981',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: '0 0 0.2rem' }}>
-                        {st.full_name}
-                      </h3>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{st.email}</span>
-                    </div>
-                    <Badge variant={isAttention ? 'warning' : 'success'}>
-                      Sem {st.current_semester}
-                    </Badge>
-                  </div>
-
-                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', marginTop: '0.5rem', fontWeight: 500 }}>
-                    {st.program}
-                  </div>
-
-                  {/* Stats Row */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '0.5rem',
-                      background: 'var(--color-bg)',
-                      padding: '0.65rem',
-                      borderRadius: '8px',
-                      marginTop: '0.85rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>CGPA</span>
-                      <strong style={{ fontSize: '0.95rem', color: 'var(--color-text)' }}>{st.cgpa}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>Skills</span>
-                      <strong style={{ fontSize: '0.95rem', color: '#3b82f6' }}>{st.skills_count}</strong>
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'block' }}>Assessment</span>
-                      <strong style={{ fontSize: '0.95rem', color: isAttention ? '#ef4444' : '#10b981' }}>
-                        {st.latest_assessment_score}%
-                      </strong>
+              <div key={st.id} className="portal-row-card">
+                <div className="portal-row-card-top">
+                  <div>
+                    <div className="portal-row-card-primary">{st.full_name}</div>
+                    <div className="portal-row-card-secondary">{st.email}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#0d9488', fontWeight: 600, marginTop: '0.15rem' }}>
+                      {st.program}
                     </div>
                   </div>
+                  <Badge variant={isAttention ? 'warning' : 'success'}>
+                    Sem {st.current_semester}
+                  </Badge>
+                </div>
 
-                  {/* Skill Gaps or Strengths */}
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
-                      {hasGaps ? '⚠️ Identified Skill Gaps' : '✅ Status'}
+                <div className="portal-row-card-grid">
+                  <div className="portal-row-card-item">
+                    <span className="portal-row-card-item-label">CGPA</span>
+                    <span className="portal-row-card-item-value">{st.cgpa}</span>
+                  </div>
+                  <div className="portal-row-card-item">
+                    <span className="portal-row-card-item-label">Skills</span>
+                    <span className="portal-row-card-item-value" style={{ color: '#2563eb' }}>
+                      {st.skills_count} verified
                     </span>
-                    {hasGaps ? (
-                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                        {st.skill_gaps.map((gap, i) => (
-                          <span
-                            key={i}
-                            style={{
-                              fontSize: '0.72rem',
-                              padding: '0.15rem 0.45rem',
-                              borderRadius: '4px',
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              color: '#ef4444',
-                              border: '1px solid rgba(239, 68, 68, 0.2)',
-                            }}
-                          >
-                            {gap}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '0.8rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <CheckCircle2 size={14} /> Skills verified & on track
-                      </span>
-                    )}
+                  </div>
+                  <div className="portal-row-card-item">
+                    <span className="portal-row-card-item-label">Assessment</span>
+                    <span className="portal-row-card-item-value" style={{ color: isAttention ? '#e11d48' : '#059669' }}>
+                      {st.latest_assessment_score}%
+                    </span>
+                  </div>
+                  <div className="portal-row-card-item">
+                    <span className="portal-row-card-item-label">Status</span>
+                    <span className="portal-row-card-item-value" style={{ color: isAttention ? '#e11d48' : '#059669' }}>
+                      {isAttention ? 'Attention' : 'On Track'}
+                    </span>
                   </div>
                 </div>
 
-                <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--color-border)' }}>
+                {hasGaps && (
+                  <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.1rem' }}>
+                    {st.skill_gaps.map((gap, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '4px',
+                          background: '#fee2e2',
+                          color: '#991b1b',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Gap: {gap}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="portal-row-card-actions">
                   <button
+                    type="button"
                     className="btn btn-primary"
-                    style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}
+                    style={{ width: '100%', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                     onClick={() => openStudentDetail(st.id)}
                   >
-                    <Eye size={15} /> View Comprehensive Record
+                    <Eye size={16} /> View Comprehensive Record
                   </button>
                 </div>
-              </Card>
+              </div>
             );
-          })}
-        </div>
+          }}
+        />
       )}
 
-      {/* Detailed Student Record Modal */}
+      {/* 4. Detailed Student Record Modal (Preserved with Responsive Touch Polish) */}
       {selectedStudentId && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.75)',
-            backdropFilter: 'blur(5px)',
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 1000,
-            padding: '1.5rem',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeStudentDetail();
           }}
         >
           <div
             style={{
-              background: 'var(--color-surface)',
-              borderRadius: '16px',
-              border: '1px solid var(--color-border)',
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
               width: '100%',
-              maxWidth: '850px',
+              maxWidth: '820px',
               maxHeight: '90vh',
               overflowY: 'auto',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             }}
           >
             {/* Modal Header */}
             <div
               style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid var(--color-border)',
+                padding: '1.15rem 1.35rem',
+                borderBottom: '1px solid #e2e8f0',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'var(--color-bg)',
+                background: '#fafafa',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <GraduationCap size={22} color="var(--color-primary)" />
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                <GraduationCap size={20} color="#0d9488" />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
                   {detailLoading ? 'Loading Student Record...' : studentDetail?.full_name}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={closeStudentDetail}
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--color-text-muted)',
+                  color: '#64748b',
                   cursor: 'pointer',
                   padding: '0.4rem',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
+                aria-label="Close record modal"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
               {detailLoading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-                  <Spinner size="lg" />
-                </div>
+                <LoadingState message="Fetching academic history and skill assessments..." />
               ) : !studentDetail ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#ef4444' }}>
-                  Student record could not be loaded or cross-institution access is forbidden.
-                </div>
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="Record Not Available"
+                  description="Student record could not be loaded or cross-institution access is forbidden."
+                />
               ) : (
                 <>
                   {/* Summary Banner */}
                   <div
                     style={{
-                      padding: '1.25rem',
+                      padding: '1rem',
                       borderRadius: '10px',
-                      background: 'rgba(37, 99, 235, 0.08)',
-                      border: '1px solid rgba(37, 99, 235, 0.2)',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                      gap: '1rem',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                      gap: '0.75rem',
                     }}
                   >
                     <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Program & Semester</span>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '0.2rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Program & Semester</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '0.15rem', fontSize: '0.9rem' }}>
                         {studentDetail.program} (Sem {studentDetail.current_semester})
                       </div>
                     </div>
                     <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>CGPA & Score</span>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '0.2rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Academic Standing</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '0.15rem', fontSize: '0.9rem' }}>
                         {studentDetail.cgpa} CGPA
                       </div>
                     </div>
                     <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Department</span>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '0.2rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Department</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '0.15rem', fontSize: '0.9rem' }}>
                         {studentDetail.department_name}
                       </div>
                     </div>
                     <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Contact Email</span>
-                      <div style={{ fontWeight: 700, color: 'var(--color-text)', marginTop: '0.2rem', fontSize: '0.85rem' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Email</span>
+                      <div style={{ fontWeight: 600, color: '#0d9488', marginTop: '0.15rem', fontSize: '0.825rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {studentDetail.email}
                       </div>
                     </div>
                   </div>
 
                   {/* Tabs */}
-                  <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', overflowX: 'auto' }}>
                     {[
                       { id: 'skills', label: `Skills (${studentDetail.skills?.length || 0})`, icon: Award },
                       { id: 'assessments', label: `Assessments (${studentDetail.assessment_history?.length || 0})`, icon: Brain },
@@ -429,19 +501,21 @@ export const MyStudents = () => {
                       return (
                         <button
                           key={tab.id}
+                          type="button"
                           onClick={() => setActiveDetailTab(tab.id)}
                           style={{
-                            padding: '0.5rem 1rem',
+                            padding: '0.45rem 0.85rem',
                             borderRadius: '6px',
-                            background: active ? 'rgba(37, 99, 235, 0.15)' : 'transparent',
-                            color: active ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            border: active ? '1px solid var(--color-primary)' : '1px solid transparent',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
+                            background: active ? '#f0fdf9' : 'transparent',
+                            color: active ? '#0d9488' : '#64748b',
+                            border: active ? '1px solid #ccfbf1' : '1px solid transparent',
+                            fontWeight: 700,
+                            fontSize: '0.8125rem',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.4rem',
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           <Icon size={14} /> {tab.label}
@@ -450,205 +524,197 @@ export const MyStudents = () => {
                     })}
                   </div>
 
-                  {/* Tab Content: Skills */}
+                  {/* Tab 1: Skills & Verified Proficiencies */}
                   {activeDetailTab === 'skills' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {studentDetail.skills?.map((sk, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            borderRadius: '8px',
-                            background: 'var(--color-bg)',
-                            border: '1px solid var(--color-border)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{sk.skill_name}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '0.5rem' }}>
-                              ({sk.category})
-                            </span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Badge variant="primary" style={{ textTransform: 'capitalize' }}>
-                              {sk.proficiency_level}
-                            </Badge>
-                            {sk.is_verified && <Badge variant="success">Verified</Badge>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Tab Content: Assessments */}
-                  {activeDetailTab === 'assessments' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {studentDetail.assessment_history?.length === 0 ? (
-                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
-                          No skill assessment attempts recorded yet.
-                        </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        Verified Skills & Proficiencies
+                      </h4>
+                      {(!studentDetail.skills || studentDetail.skills.length === 0) ? (
+                        <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No skills recorded yet.</p>
                       ) : (
-                        studentDetail.assessment_history?.map((att, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              padding: '1rem',
-                              borderRadius: '8px',
-                              background: 'var(--color-bg)',
-                              border: '1px solid var(--color-border)',
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{att.assessment_title}</span>
-                              <Badge variant={att.passed ? 'success' : 'danger'}>
-                                {att.percentage}% ({att.passed ? 'PASSED' : 'RETEST RECOMMENDED'})
-                              </Badge>
-                            </div>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '0.35rem' }}>
-                              Completed: {att.completed_at ? new Date(att.completed_at).toLocaleDateString() : 'Recent'} • Score: {att.score}/{att.total_marks}
-                            </div>
-                            {att.skill_gaps && att.skill_gaps.length > 0 && (
-                              <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: '#ef4444' }}>
-                                <strong>Skill Gaps:</strong> {att.skill_gaps.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tab Content: Learning */}
-                  {activeDetailTab === 'learning' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {studentDetail.learning_progress?.map((lp, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            padding: '0.85rem 1rem',
-                            borderRadius: '8px',
-                            background: 'var(--color-bg)',
-                            border: '1px solid var(--color-border)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9rem' }}>{lp.title}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>
-                              {lp.provider} • {lp.category}
-                            </span>
-                          </div>
-                          <Badge variant={lp.status === 'completed' ? 'success' : 'warning'}>
-                            {lp.progress_percent || 0}% ({lp.status || 'in progress'})
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Tab Content: Projects */}
-                  {activeDetailTab === 'projects' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {studentDetail.projects?.length === 0 ? (
-                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
-                          No student projects uploaded.
-                        </p>
-                      ) : (
-                        studentDetail.projects?.map((proj, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              padding: '1rem',
-                              borderRadius: '8px',
-                              background: 'var(--color-bg)',
-                              border: '1px solid var(--color-border)',
-                            }}
-                          >
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{proj.title}</span>
-                            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', margin: '0.35rem 0' }}>
-                              {proj.description}
-                            </p>
-                            {proj.technologies && (
-                              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
-                                {proj.technologies.map((t, idx) => (
-                                  <span
-                                    key={idx}
-                                    style={{
-                                      fontSize: '0.7rem',
-                                      padding: '0.15rem 0.4rem',
-                                      borderRadius: '4px',
-                                      background: 'rgba(99, 102, 241, 0.1)',
-                                      color: '#6366f1',
-                                    }}
-                                  >
-                                    {t}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tab Content: Applications */}
-                  {activeDetailTab === 'applications' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {studentDetail.applications?.length === 0 ? (
-                        <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
-                          No job or internship applications submitted yet.
-                        </p>
-                      ) : (
-                        studentDetail.applications?.map((app, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              padding: '0.85rem 1rem',
-                              borderRadius: '8px',
-                              background: 'var(--color-bg)',
-                              border: '1px solid var(--color-border)',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <div>
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{app.opportunity_title}</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block' }}>
-                                {app.company_name} • Applied: {new Date(app.applied_at).toLocaleDateString()}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.65rem' }}>
+                          {studentDetail.skills.map((sk, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: '0.65rem 0.85rem',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>{sk.name}</span>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  background: '#f0fdf9',
+                                  color: '#0d9488',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {sk.proficiency_level}
                               </span>
                             </div>
-                            <Badge variant={app.status === 'shortlisted' ? 'success' : 'primary'} style={{ textTransform: 'capitalize' }}>
-                              {app.status}
-                            </Badge>
-                          </div>
-                        ))
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 2: Assessments */}
+                  {activeDetailTab === 'assessments' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        Assessment History
+                      </h4>
+                      {(!studentDetail.assessment_history || studentDetail.assessment_history.length === 0) ? (
+                        <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No assessments completed yet.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {studentDetail.assessment_history.map((ah, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: '0.5rem',
+                              }}
+                            >
+                              <div>
+                                <strong style={{ color: '#0f172a', fontSize: '0.875rem' }}>{ah.title}</strong>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  Taken: {new Date(ah.taken_at).toLocaleDateString()}
+                                </div>
+                              </div>
+                              <span
+                                style={{
+                                  fontWeight: 800,
+                                  fontSize: '1rem',
+                                  color: ah.score >= 70 ? '#059669' : '#e11d48',
+                                }}
+                              >
+                                {ah.score}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 3: Learning */}
+                  {activeDetailTab === 'learning' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        Learning Milestones & Progress
+                      </h4>
+                      {(!studentDetail.learning_progress || studentDetail.learning_progress.length === 0) ? (
+                        <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No learning courses in progress.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {studentDetail.learning_progress.map((lp, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#0f172a' }}>{lp.resource_title}</span>
+                              <Badge variant={lp.status === 'completed' ? 'success' : 'primary'}>
+                                {lp.status}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 4: Projects */}
+                  {activeDetailTab === 'projects' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        Student Projects & Portfolios
+                      </h4>
+                      {(!studentDetail.projects || studentDetail.projects.length === 0) ? (
+                        <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No projects registered yet.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {studentDetail.projects.map((proj, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                              }}
+                            >
+                              <strong style={{ color: '#0f172a', fontSize: '0.875rem' }}>{proj.title}</strong>
+                              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.2rem 0 0' }}>
+                                {proj.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 5: Applications */}
+                  {activeDetailTab === 'applications' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                        Internship & Job Applications
+                      </h4>
+                      {(!studentDetail.applications || studentDetail.applications.length === 0) ? (
+                        <p style={{ color: '#64748b', fontSize: '0.85rem' }}>No external applications submitted yet.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {studentDetail.applications.map((app, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: '0.75rem 1rem',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <div>
+                                <strong style={{ color: '#0f172a', fontSize: '0.875rem' }}>{app.role_title}</strong>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{app.company_name}</div>
+                              </div>
+                              <Badge status={app.status}>{app.status}</Badge>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
                 </>
               )}
-            </div>
-
-            {/* Modal Footer */}
-            <div
-              style={{
-                padding: '1rem 1.5rem',
-                borderTop: '1px solid var(--color-border)',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                background: 'var(--color-bg)',
-              }}
-            >
-              <button className="btn btn-outline" onClick={closeStudentDetail}>
-                Close Record
-              </button>
             </div>
           </div>
         </div>

@@ -12,310 +12,414 @@ import {
   Brain,
   ArrowRight,
   TrendingUp,
-  AlertCircle,
-  Search,
+  RefreshCw,
+  UserCheck,
+  MapPin,
+  ExternalLink,
 } from 'lucide-react';
+import {
+  RolePageHeader,
+  RoleStatCard,
+  ResponsiveTable,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+} from '../../components/portal';
 
 export const IndustryOverview = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+
+  const fetchSummary = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
+      const data = await apiService.getIndustryDashboardSummary();
+      setSummary(data);
+    } catch (err) {
+      console.error('Failed to load industry dashboard summary:', err);
+      setError('Unable to load recruitment dashboard data. Please verify your recruiter session.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchSummary();
   }, []);
 
-  const fetchSummary = async () => {
-    try {
-      setLoading(true);
-      const data = await apiService.getIndustryDashboardSummary();
-      setSummary(data);
-    } catch (err) {
-      console.error('Failed to load industry dashboard summary:', err);
-      setError('Unable to load dashboard data. Ensure backend is running.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <LoadingState message="Loading corporate recruitment intelligence and candidate pipeline..." />;
   }
 
   if (error) {
     return (
-      <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300">
-        <div className="flex items-center gap-2 font-semibold mb-2">
-          <AlertCircle className="w-5 h-5" />
-          Dashboard Notice
-        </div>
-        <p className="text-sm">{error}</p>
-        <button
-          onClick={fetchSummary}
-          className="mt-3 px-4 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
-        >
-          Retry
-        </button>
+      <div className="portal-page">
+        <ErrorState
+          title="Recruiter Authentication Required"
+          message={error}
+          onRetry={() => fetchSummary()}
+        />
       </div>
     );
   }
 
   const company = summary?.company || {};
+  const isVerified = company.verification_status === 'verified';
+  const recentApps = summary?.recent_applications || [];
+  const recentPostings = summary?.recent_postings || [];
+
+  // Table Column Definitions for Recent Applications
+  const applicationColumns = [
+    {
+      key: 'candidate_name',
+      header: 'Candidate',
+      isPrimary: true,
+      render: (row) => (
+        <div>
+          <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.candidate_name}</div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+            {row.candidate_institution} &bull; {row.candidate_department}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'opportunity_title',
+      header: 'Applied Role',
+      render: (row) => (
+        <div>
+          <div style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem' }}>{row.opportunity_title}</div>
+          <span
+            style={{
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              color: '#0d9488',
+            }}
+          >
+            {row.opportunity_type}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'skill_match_percent',
+      header: 'Skill Match',
+      render: (row) => (
+        <span
+          className={`portal-score-badge ${
+            row.skill_match_percent >= 80 ? 'high' : row.skill_match_percent >= 60 ? 'moderate' : 'low'
+          }`}
+        >
+          {row.skill_match_percent}%
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      isBadge: true,
+      render: (row) => (
+        <span className={`portal-status-badge ${row.status}`}>
+          {row.status?.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      render: (row) => (
+        <Link
+          to="/dashboard/industry/candidates"
+          className="portal-btn secondary"
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.775rem', textDecoration: 'none' }}
+        >
+          Review
+        </Link>
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-primary-900 via-primary-800 to-indigo-900 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-xl bg-white/10 p-2 flex items-center justify-center border border-white/20 shadow-inner">
-              <Building2 className="w-9 h-9 text-indigo-200" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{company.name || 'Tata Consultancy Services'}</h1>
-                <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified Enterprise
-                </span>
-              </div>
-              <p className="text-primary-200 text-sm mt-1">
-                {company.industry_type || 'Information Technology & Cloud Services'} • {company.headquarters_city || 'Mumbai'}, {company.headquarters_state || 'Maharashtra'}
-              </p>
-              <div className="flex items-center gap-3 mt-3 text-xs text-primary-300">
-                <span>Recruiter: <strong className="text-white font-medium">{company.hr_representative?.full_name || 'Priya Nair'}</strong></span>
-                <span>•</span>
-                <span>Role: <strong className="text-white font-medium">{company.hr_representative?.designation || 'Talent Acquisition'}</strong></span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to="/dashboard/industry/postings"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-semibold shadow-md transition-all"
+    <div className="portal-page">
+      {/* 1. Recruiter Enterprise Header */}
+      <RolePageHeader
+        title={company.name || 'Corporate Recruitment Portal'}
+        subtitle={
+          company.headquarters_city
+            ? `${company.industry_type || 'Industry Partner'} • ${company.headquarters_city}, ${company.headquarters_state || 'India'}`
+            : company.industry_type || 'Enterprise Recruiter'
+        }
+        description="Unified corporate talent intelligence workspace for managing job openings, screening applicants, executing AI candidate matching, and tracking hiring funnel conversion."
+        badge={
+          company.code ? (
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                padding: '0.2rem 0.65rem',
+                borderRadius: '9999px',
+                background: '#f0fdfa',
+                color: '#0d9488',
+                border: '1px solid #ccfbf1',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+              }}
             >
-              <PlusCircle className="w-4 h-4" /> Post New Role
-            </Link>
+              <Building2 size={12} />
+              {company.code} &bull; {company.company_type || 'Corporate'}
+            </span>
+          ) : null
+        }
+        actions={
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button
+              className="portal-btn secondary"
+              onClick={() => fetchSummary(true)}
+              disabled={refreshing}
+              title="Refresh Recruitment Pipeline"
+            >
+              <RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Syncing...' : 'Refresh'}
+            </button>
             <Link
               to="/dashboard/industry/matching"
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-sm font-semibold transition-all backdrop-blur-sm"
+              className="portal-btn secondary"
+              style={{ textDecoration: 'none' }}
             >
-              <Brain className="w-4 h-4 text-indigo-300" /> AI Match
+              <Brain size={15} />
+              AI Matching
+            </Link>
+            <Link
+              to="/dashboard/industry/postings"
+              className="portal-btn primary"
+              style={{ textDecoration: 'none' }}
+            >
+              <PlusCircle size={16} />
+              Post New Role
             </Link>
           </div>
+        }
+      />
+
+      {/* 2. Recruitment Funnel Stat Cards */}
+      <div className="portal-stat-grid">
+        <RoleStatCard
+          title="Active Job Openings"
+          value={summary?.active_jobs ?? 0}
+          subtext="Full-Time Engineering Roles"
+          icon={Briefcase}
+          variant="teal"
+        />
+        <RoleStatCard
+          title="Active Internships"
+          value={summary?.active_internships ?? 0}
+          subtext="Academic Internships"
+          icon={TrendingUp}
+          variant="blue"
+        />
+        <RoleStatCard
+          title="Total Applications"
+          value={summary?.total_applications ?? 0}
+          subtext="Received Across Campuses"
+          icon={Users}
+          variant="purple"
+        />
+        <RoleStatCard
+          title="Awaiting Review"
+          value={summary?.awaiting_review ?? 0}
+          subtext="Pending Screening"
+          subtextType={summary?.awaiting_review > 0 ? 'attention' : 'neutral'}
+          icon={Clock}
+          variant="amber"
+        />
+        <RoleStatCard
+          title="Shortlisted"
+          value={summary?.shortlisted_candidates ?? 0}
+          subtext="Ready for Next Rounds"
+          subtextType="positive"
+          icon={CheckCircle2}
+          variant="emerald"
+        />
+        <RoleStatCard
+          title="Interviews"
+          value={summary?.interviews_scheduled ?? 0}
+          subtext="Scheduled Technical Rounds"
+          icon={Calendar}
+          variant="teal"
+        />
+      </div>
+
+      {/* 3. Visual Recruitment Funnel */}
+      <div className="portal-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              Recruitment Conversion Funnel
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
+              Real-time candidate progression through screening and evaluation stages.
+            </p>
+          </div>
+          <Link
+            to="/dashboard/industry/candidates"
+            style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0d9488', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            <span>Full Pipeline</span>
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+
+        <div className="portal-funnel">
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">Total Applied</div>
+            <div className="portal-funnel-value">{summary?.total_applications ?? 0}</div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">Under Review</div>
+            <div className="portal-funnel-value" style={{ color: '#b45309' }}>
+              {summary?.awaiting_review ?? 0}
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">Shortlisted</div>
+            <div className="portal-funnel-value" style={{ color: '#6d28d9' }}>
+              {summary?.shortlisted_candidates ?? 0}
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">Interview</div>
+            <div className="portal-funnel-value" style={{ color: '#0f766e' }}>
+              {summary?.interviews_scheduled ?? 0}
+            </div>
+          </div>
+          <div className="portal-funnel-step">
+            <div className="portal-funnel-label">Selected</div>
+            <div className="portal-funnel-value" style={{ color: '#15803d' }}>
+              {summary?.selected_candidates ?? 0}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Recruitment Funnel KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Active Jobs</span>
-            <Briefcase className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">{summary?.active_jobs || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Published open roles</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Internships</span>
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">{summary?.active_internships || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Academic internships</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Applications</span>
-            <Users className="w-4 h-4 text-violet-500" />
-          </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">{summary?.total_applications || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Total received</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Awaiting</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{summary?.awaiting_review || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Needs review</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Shortlisted</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary?.shortlisted_candidates || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Ready for rounds</p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider">Interviews</span>
-            <Calendar className="w-4 h-4 text-cyan-500" />
-          </div>
-          <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">{summary?.interviews_scheduled || 0}</div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Scheduled calls</p>
-        </div>
-      </div>
-
-      {/* 3. Main Grid: Recent Applications & Recent Postings */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Recent Applications Pipeline */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
+      {/* 4. Main Two-Column Section: Recent Applications + Recent Postings */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        {/* Left Column: Recent Applications */}
+        <div className="portal-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Recent Applications</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Candidates applying across engineering institutions</p>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                Recent Candidate Applications
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
+                Latest submissions from affiliated colleges
+              </p>
             </div>
             <Link
               to="/dashboard/industry/candidates"
-              className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1"
+              className="portal-btn secondary"
+              style={{ padding: '0.3rem 0.65rem', fontSize: '0.775rem', textDecoration: 'none' }}
             >
-              View Pipeline <ArrowRight className="w-3.5 h-3.5" />
+              View All ({summary?.total_applications ?? 0})
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <tr>
-                  <th className="px-3 py-2.5 rounded-l-lg">Candidate</th>
-                  <th className="px-3 py-2.5">Applied Role</th>
-                  <th className="px-3 py-2.5">Skill Match</th>
-                  <th className="px-3 py-2.5">Status</th>
-                  <th className="px-3 py-2.5 rounded-r-lg text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {summary?.recent_applications?.length > 0 ? (
-                  summary.recent_applications.map((app) => (
-                    <tr key={app.application_id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="px-3 py-3">
-                        <div className="font-semibold text-slate-900 dark:text-white">{app.candidate_name}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{app.candidate_institution} • CGPA {app.candidate_cgpa}</div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="font-medium text-slate-800 dark:text-slate-200">{app.opportunity_title}</div>
-                        <div className="text-[10px] text-slate-400 uppercase">{app.opportunity_type}</div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-slate-200 dark:bg-slate-600 h-2 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${
-                                app.skill_match_percent >= 75
-                                  ? 'bg-emerald-500'
-                                  : app.skill_match_percent >= 50
-                                  ? 'bg-blue-500'
-                                  : 'bg-amber-500'
-                              }`}
-                              style={{ width: `${app.skill_match_percent}%` }}
-                            ></div>
-                          </div>
-                          <span className="font-semibold text-slate-700 dark:text-slate-300">{app.skill_match_percent}%</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${
-                            app.status === 'shortlisted'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                              : app.status === 'interview'
-                              ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300'
-                              : app.status === 'selected'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                          }`}
-                        >
-                          {app.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <Link
-                          to={`/dashboard/industry/candidates`}
-                          className="px-2.5 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-primary-50 hover:text-primary-600 text-slate-700 dark:text-slate-300 rounded font-medium text-[11px] transition-colors"
-                        >
-                          Review
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="px-3 py-6 text-center text-slate-400">
-                      No candidate applications received yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {recentApps.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No Applications Received Yet"
+              description="Candidate applications will appear here as students discover and apply to your open postings."
+            />
+          ) : (
+            <ResponsiveTable
+              columns={applicationColumns}
+              data={recentApps.slice(0, 5)}
+            />
+          )}
         </div>
 
-        {/* Right Col: Active Postings & Quick Links */}
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Active Postings</h2>
-              <Link
-                to="/dashboard/industry/postings"
-                className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                Manage All
-              </Link>
+        {/* Right Column: Active Job & Internship Postings */}
+        <div className="portal-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                Active Opportunities
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
+                Currently published campus recruitment drives
+              </p>
             </div>
+            <Link
+              to="/dashboard/industry/postings"
+              className="portal-btn secondary"
+              style={{ padding: '0.3rem 0.65rem', fontSize: '0.775rem', textDecoration: 'none' }}
+            >
+              Manage Postings
+            </Link>
+          </div>
 
-            <div className="space-y-3">
-              {summary?.recent_postings?.slice(0, 3).map((post) => (
-                <div
-                  key={post.id}
-                  className="p-3 bg-slate-50 dark:bg-slate-700/40 rounded-lg border border-slate-200/60 dark:border-slate-700"
+          {recentPostings.length === 0 ? (
+            <EmptyState
+              icon={Briefcase}
+              title="No Active Postings"
+              description="Publish jobs or internship opportunities to attract top engineering talent."
+              action={
+                <Link
+                  to="/dashboard/industry/postings"
+                  className="portal-btn primary"
+                  style={{ textDecoration: 'none' }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-xs text-slate-900 dark:text-white">{post.title}</h3>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {post.location} • {post.stipend_or_salary}
-                      </p>
-                    </div>
-                    <span className="text-[10px] uppercase font-bold bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 px-2 py-0.5 rounded">
-                      {post.type}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/40 dark:border-slate-700 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span>{post.applications_count || 0} applicants</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">Active</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Activity Log Feed */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
-            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-3">Recruitment Activity</h2>
-            <div className="space-y-3">
-              {summary?.recruitment_activity?.map((act) => (
-                <div key={act.id} className="flex items-start gap-2.5 text-xs">
-                  <div className="w-2 h-2 rounded-full bg-primary-500 mt-1.5 flex-shrink-0"></div>
+                  <PlusCircle size={15} />
+                  Post First Opportunity
+                </Link>
+              }
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {recentPostings.slice(0, 4).map((posting) => (
+                <div
+                  key={posting.id}
+                  style={{
+                    padding: '0.85rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                  }}
+                >
                   <div>
-                    <div className="font-semibold text-slate-800 dark:text-slate-200">{act.title}</div>
-                    <div className="text-slate-500 dark:text-slate-400 text-[11px]">{act.description}</div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.875rem' }}>
+                      {posting.title}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
+                      <span style={{ textTransform: 'capitalize', color: '#0d9488', fontWeight: 600 }}>
+                        {posting.type}
+                      </span>{' '}
+                      &bull; {posting.location || 'Remote'} &bull; Deadline:{' '}
+                      {posting.application_deadline ? new Date(posting.application_deadline).toLocaleDateString() : 'Rolling'}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                      {posting.applications_count ?? 0}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Applied</div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
