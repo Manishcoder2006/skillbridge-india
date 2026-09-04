@@ -95,267 +95,391 @@ export const Login = () => {
     <div
       style={{
         minHeight: '100vh',
-        backgroundColor: '#071019',
-        color: '#f8fafc',
+        backgroundColor: '#F5F6F4',
+        color: '#071019',
         fontFamily: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '2.5rem 1.5rem',
-        boxSizing: 'border-box',
       }}
     >
-      {/* Centered Brand & Form Container */}
-      <div style={{ width: '100%', maxWidth: '480px' }}>
-        {/* Brand Header with Unified SB Logo */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <Logo theme="dark" size="lg" />
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, marginTop: '0.4rem', letterSpacing: '0.04em' }}>
-            SIH 2026 • Problem Statement 26044
-          </div>
+      {/* 1. Slim Dark Top Information Bar (Matching Landing Page) */}
+      <div
+        style={{
+          backgroundColor: '#071019',
+          color: '#cbd5e1',
+          padding: '0.45rem clamp(1rem, 3vw, 2rem)',
+          fontSize: '0.75rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '0.5rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', letterSpacing: '0.04em', flexWrap: 'wrap' }}>
+          <span style={{ color: '#20B8A6', fontWeight: 800 }}>SKILLBRIDGE INDIA</span>
+          <span style={{ opacity: 0.5, color: '#94a3b8' }}>•</span>
+          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>CONNECTING TALENT WITH OPPORTUNITY</span>
         </div>
+        <div style={{ color: '#94a3b8', fontSize: '0.72rem', fontWeight: 600, letterSpacing: '0.06em' }}>
+          STUDENTS &nbsp;•&nbsp; ACADEMIA &nbsp;•&nbsp; INDUSTRY
+        </div>
+      </div>
 
-        {/* Elevated Dark Card */}
-        <div
+      {/* 2. Clean White Navigation / Header with Official SB Logo */}
+      <header
+        style={{
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0.85rem clamp(1rem, 3.5vw, 2.5rem)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        }}
+      >
+        <Logo size="md" theme="light" />
+        <Link
+          to="/register"
           style={{
-            backgroundColor: '#0c1722',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '16px',
-            padding: '2.25rem 2rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            boxSizing: 'border-box',
+            padding: '0.45rem 1rem',
+            borderRadius: '8px',
+            backgroundColor: '#071019',
+            color: '#ffffff',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
           }}
         >
-          <div style={{ marginBottom: '1.5rem' }}>
-            <h2
-              style={{
-                fontSize: '1.6rem',
-                fontWeight: 800,
-                letterSpacing: '-0.02em',
-                color: '#ffffff',
-                margin: '0 0 0.4rem 0',
-              }}
-            >
-              Sign <span style={{ color: '#20B8A6' }}>In</span>
-            </h2>
-            <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0, lineHeight: 1.45 }}>
-              Access your personalized stakeholder dashboard & AI career pathways.
-            </p>
-          </div>
+          Create Account
+        </Link>
+      </header>
 
-          {/* Error Message Alert */}
-          {errorMessage && (
-            <div
-              style={{
-                padding: '0.75rem 1rem',
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: '8px',
-                color: '#fca5a5',
-                fontSize: '0.8rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginBottom: '1.25rem',
-              }}
-            >
-              <AlertCircle size={15} style={{ flexShrink: 0 }} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Login Form */}
-          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-            {/* Email Address Input */}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
-                Email Address <span style={{ color: '#f43f5e' }}>*</span>
-              </label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Mail size={16} style={{ position: 'absolute', left: '12px', color: '#64748b', pointerEvents: 'none' }} />
-                <input
-                  type="email"
-                  required
-                  placeholder="Enter your registered email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.7rem 0.85rem 0.7rem 2.4rem',
-                    backgroundColor: '#132233',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '8px',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = '#20B8A6')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
-                Password <span style={{ color: '#f43f5e' }}>*</span>
-              </label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '12px', color: '#64748b', pointerEvents: 'none' }} />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="Enter your account password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '0.7rem 2.4rem 0.7rem 2.4rem',
-                    backgroundColor: '#132233',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '8px',
-                    color: '#ffffff',
-                    fontSize: '0.85rem',
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                    transition: 'border-color 0.15s ease',
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = '#20B8A6')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    padding: '2px',
-                  }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit CTA */}
-            <div style={{ marginTop: '0.5rem' }}>
-              <button
-                type="submit"
-                disabled={isSubmitting}
+      {/* 3. Centered Content Container */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: '2.5rem 1.5rem',
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: '480px' }}>
+          {/* Elevated Pure White Card */}
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              padding: '2.5rem 2.25rem',
+              boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ marginBottom: '1.75rem' }}>
+              <div
                 style={{
-                  width: '100%',
-                  padding: '0.85rem',
-                  background: 'linear-gradient(135deg, #2dd4bf 0%, #20B8A6 50%, #0d9488 100%)',
-                  color: '#071019',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 800,
-                  fontSize: '0.95rem',
-                  letterSpacing: '0.01em',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  boxShadow: '0 4px 14px rgba(32, 184, 166, 0.35)',
-                  opacity: isSubmitting ? 0.7 : 1,
-                  transition: 'all 0.15s ease',
+                  gap: '0.4rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  color: '#0d9488',
+                  textTransform: 'uppercase',
+                  marginBottom: '0.4rem',
                 }}
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="spinner" style={{ width: '16px', height: '16px', borderTopColor: '#071019' }} />
-                    Authenticating...
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={18} /> Sign In
-                  </>
-                )}
-              </button>
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: '#20B8A6',
+                    display: 'inline-block',
+                  }}
+                />
+                PORTAL AUTHENTICATION
+              </div>
+              <h2
+                style={{
+                  fontSize: '1.75rem',
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: '#071019',
+                  margin: '0 0 0.35rem 0',
+                }}
+              >
+                Sign <span style={{ color: '#20B8A6' }}>In</span>
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+                Access your personalized stakeholder dashboard & AI career pathways.
+              </p>
             </div>
 
-            {/* Register Link */}
-            <div style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-              Don't have an account?{' '}
-              <Link to="/register" style={{ color: '#20B8A6', fontWeight: 700, textDecoration: 'none' }}>
-                Create Account
-              </Link>
-            </div>
-          </form>
+            {/* Error Message Alert */}
+            {errorMessage && (
+              <div
+                style={{
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#fee2e2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '0.825rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '1.25rem',
+                }}
+              >
+                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
-          {/* Quick Demo Role Switcher */}
-          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                fontSize: '0.72rem',
-                color: '#20B8A6',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: '0.75rem',
-              }}
-            >
-              <Zap size={14} /> One-Click Stakeholder Demo Access
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.6rem' }}>
-              {mockUsers.map((u) => {
-                const IconComponent = u.icon;
-                return (
-                  <button
-                    key={u.role}
-                    type="button"
-                    onClick={() => handleDevMockLogin(u.role)}
-                    disabled={isSubmitting}
+            {/* Login Form */}
+            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              {/* Email Address Input */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '0.4rem' }}>
+                  Email Address <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Mail size={16} style={{ position: 'absolute', left: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your registered email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     style={{
-                      padding: '0.65rem 0.75rem',
-                      backgroundColor: '#132233',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      width: '100%',
+                      padding: '0.75rem 0.85rem 0.75rem 2.4rem',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
                       borderRadius: '8px',
-                      color: '#ffffff',
-                      textAlign: 'left',
+                      color: '#071019',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#20B8A6';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(32, 184, 166, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#cbd5e1';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
+                    Password <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <Link to="/forgot-password" style={{ fontSize: '0.75rem', color: '#0d9488', fontWeight: 600, textDecoration: 'none' }}>
+                    Forgot Password?
+                  </Link>
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Lock size={16} style={{ position: 'absolute', left: '12px', color: '#94a3b8', pointerEvents: 'none' }} />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Enter your account password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem 2.4rem 0.75rem 2.4rem',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      color: '#071019',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#20B8A6';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(32, 184, 166, 0.15)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = '#cbd5e1';
+                      e.target.style.boxShadow = 'none';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
                       cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      transition: 'all 0.15s ease',
+                      padding: '2px',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = u.color)}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)')}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    <div style={{ color: u.color, display: 'flex', alignItems: 'center' }}>
-                      <IconComponent size={16} />
-                    </div>
-                    <div style={{ overflow: 'hidden' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {u.name}
-                      </div>
-                      <div style={{ fontSize: '0.65rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                        {u.desc}
-                      </div>
-                    </div>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-                );
-              })}
+                </div>
+              </div>
+
+              {/* Submit CTA */}
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem',
+                    backgroundColor: '#20B8A6',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    letterSpacing: '0.01em',
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    boxShadow: '0 4px 14px rgba(32, 184, 166, 0.3)',
+                    opacity: isSubmitting ? 0.7 : 1,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) e.currentTarget.style.backgroundColor = '#0d9488';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSubmitting) e.currentTarget.style.backgroundColor = '#20B8A6';
+                  }}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner" style={{ width: '16px', height: '16px', borderTopColor: '#ffffff' }} />
+                      Authenticating...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={18} /> Sign In
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Register Link */}
+              <div style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.825rem', color: '#64748b' }}>
+                Don't have an account?{' '}
+                <Link to="/register" style={{ color: '#0d9488', fontWeight: 700, textDecoration: 'none' }}>
+                  Create Account
+                </Link>
+              </div>
+            </form>
+
+            {/* Quick Demo Role Switcher */}
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.72rem',
+                  color: '#0d9488',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                <Zap size={14} color="#20B8A6" /> One-Click Stakeholder Demo Access
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.65rem' }}>
+                {mockUsers.map((u) => {
+                  const IconComponent = u.icon;
+                  return (
+                    <button
+                      key={u.role}
+                      type="button"
+                      onClick={() => handleDevMockLogin(u.role)}
+                      disabled={isSubmitting}
+                      style={{
+                        padding: '0.7rem 0.8rem',
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: '#071019',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#20B8A6';
+                        e.currentTarget.style.backgroundColor = '#ffffff';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(32, 184, 166, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          borderRadius: '6px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          color: u.color,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <IconComponent size={16} />
+                      </div>
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', color: '#071019' }}>
+                          {u.name}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                          {u.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Bottom Minimal Footer */}
-        <div style={{ textAlign: 'center', marginTop: '1.75rem', fontSize: '0.72rem', color: '#64748b' }}>
-          © 2026 SkillBridge India. All rights reserved.
+          {/* Bottom Minimal Footer */}
+          <div style={{ textAlign: 'center', marginTop: '1.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+            © 2026 SkillBridge India • SIH 2026 Problem Statement 26044
+          </div>
         </div>
       </div>
     </div>

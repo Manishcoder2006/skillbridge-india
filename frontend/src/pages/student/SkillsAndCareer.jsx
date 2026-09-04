@@ -279,19 +279,20 @@ export const SkillsAndCareer = () => {
   // ---------------------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-      {/* Top Header Banner */}
+      {/* Top Header Banner (Landing Page Navy & Teal Aesthetic) */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '2rem 1.75rem',
+          backgroundColor: '#071019',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: '2.25rem 2rem',
           color: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1.25rem',
-          boxShadow: '0 10px 25px -5px rgba(49, 46, 129, 0.35)',
+          boxShadow: '0 10px 25px -5px rgba(7, 16, 25, 0.15)',
         }}
       >
         <div>
@@ -299,23 +300,24 @@ export const SkillsAndCareer = () => {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.4rem',
+              gap: '0.45rem',
               padding: '0.25rem 0.65rem',
-              background: 'rgba(255, 255, 255, 0.15)',
+              backgroundColor: 'rgba(32, 184, 166, 0.15)',
               borderRadius: '6px',
               fontSize: '0.75rem',
               fontWeight: 800,
               textTransform: 'uppercase',
-              letterSpacing: '0.05em',
+              letterSpacing: '0.08em',
+              color: '#20B8A6',
               marginBottom: '0.5rem',
             }}
           >
-            <Sparkles size={13} color="#fde047" /> AI Preparation & Competency Matrix
+            <Sparkles size={13} color="#20B8A6" /> AI Preparation & Competency Matrix
           </div>
-          <h1 style={{ fontSize: '1.85rem', fontWeight: 900, margin: 0, lineHeight: 1.2 }}>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
             Skills & Career Pathways
           </h1>
-          <p style={{ color: '#c7d2fe', fontSize: '0.9rem', marginTop: '0.35rem', maxWidth: '620px', lineHeight: 1.5 }}>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.4rem', maxWidth: '620px', lineHeight: 1.5 }}>
             Practice adaptive multi-model AI interviews, evaluate real-world scenarios, and benchmark verified competencies against industry hiring standards.
           </p>
         </div>
@@ -326,19 +328,22 @@ export const SkillsAndCareer = () => {
             type="button"
             onClick={() => handleOpenSetup('technical')}
             style={{
-              padding: '0.75rem 1.25rem',
-              background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+              padding: '0.75rem 1.35rem',
+              backgroundColor: '#20B8A6',
               color: '#ffffff',
               border: 'none',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: '8px',
               fontWeight: 700,
               fontSize: '0.875rem',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)',
+              boxShadow: '0 4px 14px rgba(32, 184, 166, 0.3)',
+              transition: 'all 0.15s ease',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#0d9488')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#20B8A6')}
           >
             <Code size={16} /> Technical Mock Interview
           </button>
@@ -350,7 +355,7 @@ export const SkillsAndCareer = () => {
         style={{
           display: 'flex',
           borderBottom: '1px solid #e2e8f0',
-          gap: '0.5rem',
+          gap: '0.75rem',
         }}
       >
         <button
@@ -362,15 +367,16 @@ export const SkillsAndCareer = () => {
             gap: '0.5rem',
             padding: '0.75rem 1.25rem',
             border: 'none',
-            borderBottom: activeTab === 'interviews' ? '3px solid var(--primary-600)' : '3px solid transparent',
+            borderBottom: activeTab === 'interviews' ? '3px solid #20B8A6' : '3px solid transparent',
             background: 'none',
-            color: activeTab === 'interviews' ? 'var(--primary-600)' : 'var(--text-secondary)',
+            color: activeTab === 'interviews' ? '#071019' : '#64748b',
             fontWeight: activeTab === 'interviews' ? 800 : 600,
             fontSize: '0.95rem',
             cursor: 'pointer',
+            transition: 'all 0.15s ease',
           }}
         >
-          <Sparkles size={16} /> AI Interview Simulator
+          <Sparkles size={16} color={activeTab === 'interviews' ? '#20B8A6' : '#94a3b8'} /> AI Interview Simulator
         </button>
 
         <button
@@ -382,15 +388,16 @@ export const SkillsAndCareer = () => {
             gap: '0.5rem',
             padding: '0.75rem 1.25rem',
             border: 'none',
-            borderBottom: activeTab === 'matrix' ? '3px solid var(--primary-600)' : '3px solid transparent',
+            borderBottom: activeTab === 'matrix' ? '3px solid #20B8A6' : '3px solid transparent',
             background: 'none',
-            color: activeTab === 'matrix' ? 'var(--primary-600)' : 'var(--text-secondary)',
+            color: activeTab === 'matrix' ? '#071019' : '#64748b',
             fontWeight: activeTab === 'matrix' ? 800 : 600,
             fontSize: '0.95rem',
             cursor: 'pointer',
+            transition: 'all 0.15s ease',
           }}
         >
-          <BarChart3 size={16} /> Verified Competency Matrix & Gap Analysis
+          <BarChart3 size={16} color={activeTab === 'matrix' ? '#20B8A6' : '#94a3b8'} /> Verified Competency Matrix & Gap Analysis
         </button>
       </div>
 

@@ -6,13 +6,13 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: #F5F6F4;
 }
 
 /* Sidebar */
 .sidebar {
   width: 260px;
-  background-color: #060e1a;
+  background-color: #071019;
   color: #f8fafc;
   display: flex;
   flex-direction: column;
@@ -131,14 +131,15 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background-color: #f8fafc;
+  background-color: #F5F6F4;
 }
 
 /* Top Header */
 .top-header {
   height: 64px;
   background-color: #ffffff;
-  border-bottom: 1px solid #eef2f6;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   padding: 0 1.75rem;
   display: flex;
   align-items: center;
@@ -983,18 +984,18 @@
   width: 100%;
   padding: 0.625rem 0.875rem 0.625rem 2.4rem;
   font-size: 0.875rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #ffffff;
+  color: #071019;
   outline: none;
   transition: all var(--transition-fast);
 }
 
 .opp-search-input:focus {
   background-color: #ffffff;
-  border-color: #0d9488;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  border-color: #20B8A6;
+  box-shadow: 0 0 0 3px rgba(32, 184, 166, 0.15);
 }
 
 .opp-select-box {
@@ -1006,10 +1007,10 @@
   width: 100%;
   padding: 0.625rem 0.875rem;
   font-size: 0.875rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: #ffffff;
+  color: #071019;
   outline: none;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -1017,8 +1018,8 @@
 
 .opp-select:focus {
   background-color: #ffffff;
-  border-color: #0d9488;
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.12);
+  border-color: #20B8A6;
+  box-shadow: 0 0 0 3px rgba(32, 184, 166, 0.15);
 }
 
 .opp-filter-toggle-btn {
@@ -1410,7 +1411,7 @@
 }
 
 .profile-save-btn {
-  background-color: #0f172a;
+  background-color: #20B8A6;
   color: #ffffff;
   border: none;
   padding: 10px 22px;
@@ -1421,10 +1422,15 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(32, 184, 166, 0.3);
   transition: all var(--transition-fast);
   position: relative;
   z-index: 2;
   white-space: nowrap;
+}
+
+.profile-save-btn:hover {
+  background-color: #0d9488;
 }
 
 .profile-save-btn:hover:not(:disabled) {

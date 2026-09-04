@@ -4,13 +4,22 @@
    ============================================================================== */
 
 :root {
-  /* Color Palette: National / Professional Navy, Slate, Gold & Teal */
+  /* Brand Identity: Deep Navy & SkillBridge Teal (Landing Page Source of Truth) */
+  --brand-navy: #071019;
+  --brand-navy-light: #0f172a;
+  --brand-teal: #20B8A6;
+  --brand-teal-dark: #0d9488;
+  --brand-teal-darker: #0f766e;
+  --brand-teal-light: #f0fdf9;
+  --brand-teal-tint: #ccfbf1;
+  --brand-teal-shadow: rgba(32, 184, 166, 0.25);
+
   --primary-950: #020617;
-  --primary-900: #0f172a;
-  --primary-800: #1e293b;
-  --primary-700: #334155;
-  --primary-600: #475569;
-  --primary-500: #64748b;
+  --primary-900: #071019;
+  --primary-800: #0f172a;
+  --primary-700: #1e293b;
+  --primary-600: #334155;
+  --primary-500: #475569;
   
   --accent-amber: #d97706;
   --accent-amber-light: #fef3c7;
@@ -18,11 +27,11 @@
 
   --accent-teal: #20B8A6;
   --accent-teal-light: #ccfbf1;
-  --accent-teal-dark: #0f766e;
+  --accent-teal-dark: #0d9488;
   --accent-teal-hover: #14b8a6;
 
-  --accent-blue: #2563eb;
-  --accent-blue-light: #dbeafe;
+  --accent-blue: #0284c7;
+  --accent-blue-light: #e0f2fe;
 
   --success: #16a34a;
   --success-light: #dcfce7;
@@ -31,33 +40,35 @@
   --warning: #ca8a04;
   --warning-light: #fef9c3;
 
-  /* Surfaces & Backgrounds */
-  --bg-page: #f8fafc;
+  /* Surfaces & Backgrounds (Landing Page Match: #F5F6F4 Canvas, #FFFFFF Cards) */
+  --bg-page: #F5F6F4;
   --bg-surface: #ffffff;
-  --bg-surface-muted: #f1f5f9;
+  --bg-surface-muted: #f8fafc;
   --border-color: #e2e8f0;
   --border-color-dark: #cbd5e1;
 
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-heading: 'Outfit', 'Inter', sans-serif;
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
-  --text-primary: #0f172a;
+  --text-primary: #071019;
   --text-secondary: #334155;
-  --text-muted: #475569;
+  --text-muted: #64748b;
   --text-inverse: #ffffff;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  /* Shadows (Landing Page Soft Elevation) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 14px rgba(7, 16, 25, 0.06);
+  --shadow-lg: 0 10px 25px -5px rgba(7, 16, 25, 0.08), 0 8px 10px -6px rgba(7, 16, 25, 0.04);
+  --shadow-xl: 0 20px 30px -8px rgba(7, 16, 25, 0.12);
+  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  --shadow-card-hover: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
 
   /* Radii */
-  --radius-sm: 4px;
+  --radius-sm: 6px;
   --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
   --radius-full: 9999px;
 
   /* Transitions */
@@ -205,12 +216,23 @@ table.w-full {
 }
 
 .btn-primary {
-  background-color: var(--primary-900);
-  color: var(--text-inverse);
+  background-color: var(--accent-teal);
+  color: #ffffff;
+  border: 1px solid transparent;
 }
 .btn-primary:hover {
-  background-color: var(--primary-800);
-  box-shadow: var(--shadow-md);
+  background-color: var(--accent-teal-dark);
+  box-shadow: 0 4px 14px var(--brand-teal-shadow);
+}
+
+.btn-dark {
+  background-color: var(--brand-navy);
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+.btn-dark:hover {
+  background-color: var(--brand-navy-light);
+  box-shadow: 0 4px 14px rgba(7, 16, 25, 0.25);
 }
 
 .btn-accent {
@@ -228,7 +250,7 @@ table.w-full {
 }
 .btn-teal:hover {
   background-color: var(--accent-teal-dark);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 14px var(--brand-teal-shadow);
 }
 
 .btn-secondary {
@@ -238,16 +260,18 @@ table.w-full {
 }
 .btn-secondary:hover {
   background-color: var(--bg-surface-muted);
+  border-color: #94a3b8;
 }
 
 .btn-outline {
   background-color: transparent;
-  color: var(--primary-900);
-  border-color: var(--primary-900);
+  color: var(--brand-navy);
+  border-color: var(--border-color-dark);
 }
 .btn-outline:hover {
-  background-color: var(--primary-900);
-  color: var(--text-inverse);
+  background-color: var(--brand-navy);
+  color: #ffffff;
+  border-color: var(--brand-navy);
 }
 
 .btn-danger {
@@ -302,8 +326,8 @@ table.w-full {
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
   outline: none;
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px var(--accent-blue-light);
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(32, 184, 166, 0.18);
 }
 
 .form-input.error {
@@ -483,13 +507,14 @@ table.w-full {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-card);
   padding: 1.5rem;
-  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  transition: box-shadow var(--transition-base), transform var(--transition-base), border-color var(--transition-base);
 }
 
 .card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card-hover);
+  border-color: #cbd5e1;
 }
 
 .card-header {
