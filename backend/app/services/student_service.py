@@ -1,3 +1,4 @@
+import re
 import logging
 from typing import Dict, Any, List
 from fastapi import HTTPException, status
@@ -5,10 +6,114 @@ from app.repositories.student_repository import student_repo, PHASE2_MOCK_STORE
 
 logger = logging.getLogger("skillbridge.services.student")
 
+def normalize_skill(name: str) -> str:
+    """
+    Normalizes a skill name for robust, case-insensitive, formatting-agnostic matching.
+    Handles aliases: 'Java Script' / 'JS' -> 'javascript', 'Frontend' -> 'frontend', etc.
+    """
+    if not name:
+        return ""
+    clean = re.sub(r"[^\w\s/+.-]", "", str(name)).lower().strip()
+    clean = re.sub(r"\s+", " ", clean)
+
+    aliases = {
+        "js": "javascript",
+        "java script": "javascript",
+        "javascript": "javascript",
+        "vanilla js": "javascript",
+        "es6": "javascript",
+        "ecmascript": "javascript",
+
+        "ts": "typescript",
+        "type script": "typescript",
+
+        "react": "react",
+        "reactjs": "react",
+        "react.js": "react",
+        "react 18": "react",
+        "react native": "react",
+
+        "frontend": "frontend",
+        "front-end": "frontend",
+        "front end": "frontend",
+        "frontend development": "frontend",
+        "web frontend": "frontend",
+
+        "py": "python",
+        "python": "python",
+        "python3": "python",
+
+        "fastapi": "fastapi",
+        "fast api": "fastapi",
+
+        "postgres": "postgresql",
+        "postgresql": "postgresql",
+        "psql": "postgresql",
+        "postgres sql": "postgresql",
+
+        "rest": "rest apis",
+        "rest api": "rest apis",
+        "rest apis": "rest apis",
+        "restful": "rest apis",
+        "restful api": "rest apis",
+        "restful apis": "rest apis",
+
+        "git": "git",
+        "github": "git",
+        "version control": "git",
+
+        "docker": "docker",
+        "docker containerization": "docker",
+        "containers": "docker",
+
+        "ci/cd": "ci/cd",
+        "cicd": "ci/cd",
+        "ci cd": "ci/cd",
+        "continuous integration": "ci/cd",
+
+        "cloud": "cloud fundamentals",
+        "cloud computing": "cloud fundamentals",
+        "cloud fundamentals": "cloud fundamentals",
+        "aws": "cloud fundamentals",
+        "azure": "cloud fundamentals",
+        "gcp": "cloud fundamentals",
+
+        "linux": "linux",
+        "unix": "linux",
+        "bash": "linux",
+        "shell": "linux",
+
+        "dsa": "data structures",
+        "data structures": "data structures",
+        "algorithms": "algorithms",
+    }
+    return aliases.get(clean, clean)
+
+def skills_match(req_skill: str, student_skill: str) -> bool:
+    """
+    Checks if a student's skill satisfies a benchmark required skill.
+    Considers normalized equivalence, substring inclusion, and domain mappings (e.g. Frontend <-> React).
+    """
+    r_norm = normalize_skill(req_skill)
+    s_norm = normalize_skill(student_skill)
+    if not r_norm or not s_norm:
+        return False
+    if r_norm == s_norm:
+        return True
+    if r_norm in s_norm or s_norm in r_norm:
+        return True
+    # Frontend <-> React mapping: React is the primary frontend UI framework in Full Stack
+    if (r_norm == "react" and s_norm == "frontend") or (r_norm == "frontend" and s_norm == "react"):
+        return True
+    # FastAPI <-> REST APIs mapping: FastAPI directly provides RESTful API architecture
+    if (r_norm == "rest apis" and s_norm == "fastapi") or (r_norm == "fastapi" and s_norm == "rest apis"):
+        return True
+    return False
+
 CAREER_PATH_BENCHMARKS = [
     {
         "role_name": "Full Stack Developer",
-        "required_skills": ["React", "JavaScript", "Python", "FastAPI", "PostgreSQL", "REST APIs", "Git"]
+        "required_skills": ["React", "JavaScript", "Python", "FastAPI", "PostgreSQL", "Git"]
     },
     {
         "role_name": "Cloud & DevOps Engineer",
@@ -24,7 +129,10 @@ class StudentService:
     def get_dashboard_summary(self, student_id: str) -> Dict[str, Any]:
         profile = student_repo.get_full_student_profile(student_id)
         skills = student_repo.get_student_skills(student_id)
-        skill_names = set(s["skill_name"].lower() for s in skills)
+        student_skill_names = [
+            s.get("skill_name", "") for s in skills
+            if isinstance(s, dict) and s.get("skill_name")
+        ]
         
         # Calculate profile completion percentage
         completion_score = 0
@@ -52,15 +160,18 @@ class StudentService:
                     identified_gaps.append(g)
 
         if not top_strengths:
-            top_strengths = ["React", "REST APIs", "Python"]
+            top_strengths = [s for s in student_skill_names[:3]] if student_skill_names else ["React", "Python"]
         if not identified_gaps:
             identified_gaps = ["Cloud Security", "Docker Containerization"]
 
-        # Career Paths Progress
+        # Career Paths Progress - dynamically benchmark against current student competencies
         career_paths = []
         for benchmark in CAREER_PATH_BENCHMARKS:
             required = benchmark["required_skills"]
-            acquired = [req for req in required if any(req.lower() in s or s in req.lower() for s in skill_names)]
+            acquired = [
+                req for req in required
+                if any(skills_match(req, sk) for sk in student_skill_names)
+            ]
             missing = [req for req in required if req not in acquired]
             match_pct = int((len(acquired) / len(required)) * 100) if required else 0
             career_paths.append({

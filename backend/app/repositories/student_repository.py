@@ -445,13 +445,59 @@ class StudentRepository:
         return self.get_full_student_profile(student_id)
 
     def get_student_skills(self, student_id: str) -> List[Dict[str, Any]]:
-        return [s for s in PHASE2_MOCK_STORE["student_skills"] if str(s["student_id"]) == str(student_id)]
+        if db_manager.is_live and db_manager.client:
+            try:
+                res = (
+                    db_manager.client.table("student_skills")
+                    .select("*")
+                    .eq("student_id", student_id)
+                    .order("created_at", desc=False)
+                    .execute()
+                )
+                if res.data is not None and len(res.data) > 0:
+                    return res.data
+            except Exception as e:
+                logger.warning(f"Live Supabase get_student_skills failed: {e}. Falling back to dev store.")
+
+        # In-memory store fallback
+        skills = [s for s in PHASE2_MOCK_STORE["student_skills"] if str(s["student_id"]) == str(student_id)]
+        return skills
 
     def add_student_skill(self, student_id: str, skill_data: Dict[str, Any]) -> Dict[str, Any]:
-        # Check duplicate
+        is_verified = skill_data.get("is_verified", False)
+        
+        # 1. Live Supabase persistence
+        if db_manager.is_live and db_manager.client:
+            try:
+                record = {
+                    "student_id": student_id,
+                    "skill_name": skill_data["skill_name"],
+                    "category": skill_data.get("category", "technical"),
+                    "proficiency_level": skill_data.get("proficiency_level", "intermediate"),
+                    "is_verified": is_verified,
+                }
+                res = db_manager.client.table("student_skills").upsert(record, on_conflict="student_id,skill_name").execute()
+                if res.data and len(res.data) > 0:
+                    created_skill = res.data[0]
+                    # Also keep local store synced
+                    matched_mock = next(
+                        (s for s in PHASE2_MOCK_STORE["student_skills"] if str(s["student_id"]) == str(student_id) and s["skill_name"].lower() == skill_data["skill_name"].lower()),
+                        None
+                    )
+                    if matched_mock:
+                        matched_mock.update(created_skill)
+                    else:
+                        PHASE2_MOCK_STORE["student_skills"].append(created_skill)
+                    return created_skill
+            except Exception as e:
+                logger.warning(f"Live Supabase add_student_skill failed: {e}. Persisting to dev store.")
+
+        # 2. Local mock store persistence
         for s in PHASE2_MOCK_STORE["student_skills"]:
             if str(s["student_id"]) == str(student_id) and s["skill_name"].lower() == skill_data["skill_name"].lower():
                 s["proficiency_level"] = skill_data.get("proficiency_level", s["proficiency_level"])
+                if "is_verified" in skill_data:
+                    s["is_verified"] = skill_data["is_verified"]
                 return s
 
         new_skill = {
@@ -460,13 +506,19 @@ class StudentRepository:
             "skill_name": skill_data["skill_name"],
             "category": skill_data.get("category", "technical"),
             "proficiency_level": skill_data.get("proficiency_level", "intermediate"),
-            "is_verified": False,
+            "is_verified": is_verified,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         PHASE2_MOCK_STORE["student_skills"].append(new_skill)
         return new_skill
 
     def delete_student_skill(self, student_id: str, skill_id: str) -> bool:
+        if db_manager.is_live and db_manager.client:
+            try:
+                db_manager.client.table("student_skills").delete().eq("id", skill_id).eq("student_id", student_id).execute()
+            except Exception as e:
+                logger.warning(f"Live Supabase delete_student_skill failed: {e}")
+
         initial_len = len(PHASE2_MOCK_STORE["student_skills"])
         PHASE2_MOCK_STORE["student_skills"] = [
             s for s in PHASE2_MOCK_STORE["student_skills"]

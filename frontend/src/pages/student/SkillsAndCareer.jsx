@@ -176,11 +176,15 @@ export const SkillsAndCareer = () => {
     try {
       setAddingSkill(true);
       const created = await apiService.addStudentSkill(newSkill);
-      setSkills([...skills, created]);
       setNewSkill({ skill_name: '', category: 'technical', proficiency_level: 'intermediate' });
       showSuccess(`Skill "${created.skill_name}" added to matrix!`);
-      const updatedSummary = await apiService.getStudentDashboardSummary();
-      setSummary(updatedSummary);
+      // Refetch latest skills and dashboard summary in parallel to reflect fresh competencies
+      const [updatedSkills, updatedSummary] = await Promise.all([
+        apiService.getStudentSkills().catch(() => [...skills, created]),
+        apiService.getStudentDashboardSummary().catch(() => null),
+      ]);
+      if (updatedSkills) setSkills(updatedSkills);
+      if (updatedSummary) setSummary(updatedSummary);
     } catch (err) {
       showError('Failed to add skill.');
     } finally {
@@ -191,10 +195,14 @@ export const SkillsAndCareer = () => {
   const handleDeleteSkill = async (id, name) => {
     try {
       await apiService.deleteStudentSkill(id);
-      setSkills(skills.filter((s) => s.id !== id));
       showSuccess(`Skill "${name}" removed.`);
-      const updatedSummary = await apiService.getStudentDashboardSummary();
-      setSummary(updatedSummary);
+      // Refetch latest skills and dashboard summary in parallel to reflect fresh competencies
+      const [updatedSkills, updatedSummary] = await Promise.all([
+        apiService.getStudentSkills().catch(() => skills.filter((s) => s.id !== id)),
+        apiService.getStudentDashboardSummary().catch(() => null),
+      ]);
+      if (updatedSkills) setSkills(updatedSkills);
+      if (updatedSummary) setSummary(updatedSummary);
     } catch (err) {
       showError('Failed to remove skill.');
     }

@@ -83,7 +83,11 @@ class AIOrchestrator:
     # 1. Student AI Capabilities
     # --------------------------------------------------------------------------
     async def analyze_skill_gap(self, user_id: str, target_role: str, custom_skills: Optional[List[str]] = None) -> SkillGapAnalysisResponse:
-        skills = custom_skills or [s["skill_name"] for s in student_repo.get_student_skills(user_id)]
+        raw_skills = student_repo.get_student_skills(user_id) if hasattr(student_repo, 'get_student_skills') else []
+        skills = custom_skills or [
+            s.get("skill_name") for s in raw_skills
+            if isinstance(s, dict) and s.get("skill_name")
+        ]
         recent_assessments = student_repo.get_student_assessment_results(user_id)
         latest_score = int(recent_assessments[0].get("percentage", recent_assessments[0].get("score_percentage", 80))) if recent_assessments else 80
 
@@ -98,30 +102,46 @@ class AIOrchestrator:
             target_role=target_role
         )
 
+        # Dynamic fallback based on student's actual competencies rather than hardcoded skills
+        current_strengths = [f"{s} Applied Competency" for s in skills[:3]] if skills else [f"{target_role} Foundational Concepts"]
+        skill_names_lower = set(s.lower() for s in skills)
+        
+        # Standard potential target skills for role
+        role_gap_candidates = [
+            ("Docker & Container Orchestration", "Critical", "Build multi-stage Dockerfiles and containerize application microservices."),
+            ("CI/CD Pipeline Automation", "Moderate", "Configure automated test and build workflows with GitHub Actions."),
+            ("System Performance & Optimization", "Moderate", "Profile query latency and optimize caching strategies."),
+            ("Cloud Infrastructure Fundamentals", "Critical", "Deploy scalable cloud services on modern container platforms.")
+        ]
+        filtered_gaps = [
+            {
+                "skill_name": name,
+                "current_level": "beginner",
+                "target_level": "proficient",
+                "gap_severity": sev,
+                "remediation_hint": hint
+            }
+            for name, sev, hint in role_gap_candidates
+            if not any(name.lower() in sk or sk in name.lower() for sk in skill_names_lower)
+        ][:2]
+
         fallback_data = {
             "target_role": target_role,
-            "readiness_percentage": 82,
-            "strengths": ["React 18 Component Architecture", "Python API Design with FastAPI", "PostgreSQL Relational Schema"],
-            "identified_gaps": [
+            "readiness_percentage": min(95, max(45, 40 + len(skills) * 10)),
+            "strengths": current_strengths,
+            "identified_gaps": filtered_gaps or [
                 {
-                    "skill_name": "Docker & Container Orchestration",
-                    "current_level": "beginner",
-                    "target_level": "proficient",
-                    "gap_severity": "Critical",
-                    "remediation_hint": "Build multi-stage Dockerfiles and containerize full stack FastAPI + PostgreSQL applications."
-                },
-                {
-                    "skill_name": "Database Indexing & Query Optimization",
+                    "skill_name": "Advanced System Architecture",
                     "current_level": "intermediate",
                     "target_level": "advanced",
                     "gap_severity": "Moderate",
-                    "remediation_hint": "Practice analyzing EXPLAIN ANALYZE queries and building composite indexes for high-throughput reads."
+                    "remediation_hint": "Practice architectural design patterns and high-throughput microservices."
                 }
             ],
             "action_plan_steps": [
-                "Complete the 5-hour NPTEL Docker Containerization lab.",
-                "Implement automated CI/CD container tests in your next university engineering project.",
-                "Take the SkillBridge Advanced Backend Diagnostic Assessment."
+                f"Benchmark target competencies for {target_role} through guided labs.",
+                "Implement automated testing in your university engineering projects.",
+                "Complete the SkillBridge Advanced Diagnostic Assessment."
             ]
         }
 
@@ -176,7 +196,11 @@ class AIOrchestrator:
         )
 
     async def get_career_recommendations(self, user_id: str, interests: Optional[List[str]] = None) -> CareerRecommendationsResponse:
-        skills = [s["skill_name"] for s in student_repo.get_student_skills(user_id)]
+        raw_skills = student_repo.get_student_skills(user_id) if hasattr(student_repo, 'get_student_skills') else []
+        skills = [
+            s.get("skill_name") for s in raw_skills
+            if isinstance(s, dict) and s.get("skill_name")
+        ]
         profile = user_repo.get_profile_by_id(user_id)
         candidate_name = profile.get("full_name") if profile else "Student"
         strategy, models = model_router.route_task("career_guidance")
@@ -188,23 +212,26 @@ class AIOrchestrator:
             interests=interests or ["Full Stack", "Distributed Cloud Systems"]
         )
 
+        why_rec_1 = f"Directly builds on your verified competencies in {', '.join(skills[:3])}." if skills else "High-growth pathway for engineering graduates."
+        why_rec_2 = f"Leverages your applied capabilities in {', '.join(skills[-2:])}." if len(skills) >= 2 else "In-demand enterprise domain matching your academic profile."
+
         fallback_data = {
             "primary_recommendations": [
                 {
                     "role_title": "Full Stack Cloud Platform Engineer",
-                    "match_percentage": 94,
+                    "match_percentage": min(95, max(60, 50 + len(skills) * 8)),
                     "growth_outlook": "High Demand / 32% YoY Expansion in India",
                     "average_starting_salary": "₹10.5 - 16.0 LPA",
-                    "key_required_skills": ["React", "FastAPI", "PostgreSQL", "Docker"],
-                    "why_recommended": "Directly matches your verified React frontend and FastAPI backend competencies."
+                    "key_required_skills": ["React", "FastAPI", "PostgreSQL", "Git"],
+                    "why_recommended": why_rec_1
                 },
                 {
                     "role_title": "Backend Microservices Architect (Associate)",
-                    "match_percentage": 88,
+                    "match_percentage": min(92, max(55, 45 + len(skills) * 8)),
                     "growth_outlook": "High Demand in Enterprise SaaS",
                     "average_starting_salary": "₹9.0 - 14.5 LPA",
                     "key_required_skills": ["Python", "PostgreSQL", "Docker", "REST Architecture"],
-                    "why_recommended": "Leverages your relational database modeling and high-throughput Python expertise."
+                    "why_recommended": why_rec_2
                 }
             ],
             "alternative_domains": ["DevOps & Site Reliability Engineering", "AI Systems Integration"],
