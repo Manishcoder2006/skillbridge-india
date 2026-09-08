@@ -16,6 +16,9 @@ from app.services.ai.gemini_service import gemini_service
 from app.services.ai.groq_service import groq_service
 from app.services.ai.router import model_router
 from app.services.ai.prompts import PromptTemplates
+from app.services.ai.rag_service import rag_service
+from app.services.ai.relevance_guard import relevance_guard
+from fastapi import HTTPException, status
 
 logger = logging.getLogger("skillbridge.ai.micro_tutor")
 
@@ -233,12 +236,27 @@ class MicroTutorService:
         difficulty = payload.difficulty or "beginner"
         goal = payload.learning_goal or "interview_prep"
 
-        fallback_dict = self._build_fallback_path(topic, difficulty, goal)
+        # 1. RAG retrieval for specific topic
+        rag_resources = rag_service.search_learning_resources(query=topic, top_k=3)
+        rag_text = "\n".join([f"- [{r.get('title')}]: {r.get('content')}" for r in rag_resources]) if rag_resources else ""
+        rag_ctx = f"\nRelevant Domain Context from SkillBridge Knowledge Base:\n{rag_text}\n" if rag_text else ""
+
+        logger.info(
+            f"[MicroTutor-Pipeline] User: {user_id} | Topic: '{topic}' | "
+            f"Normalized Topic: '{rag_service.normalize_query(topic)}' | "
+            f"RAG Chunks: {len(rag_resources)}"
+        )
 
         prompt = f"""You are the SkillBridge India Elite AI Micro-Learning Tutor (SIH 2026).
 Generate a structured micro-learning path for the topic: "{topic}".
 Target Audience Difficulty: {difficulty.upper()}
 Learning Goal: {goal.upper()}
+{rag_ctx}
+MANDATORY RULES:
+1. The requested topic "{topic}" MUST strictly control the entire lesson content.
+2. If the topic is English or language communication, every single lesson must be about English (grammar, speaking, pronunciation, vocabulary, fluency). NEVER mention React, HTML, CSS, or web frameworks!
+3. If the topic is Python, lessons must be Python-focused.
+4. If the topic is React, lessons must be React-focused.
 
 Guidelines:
 - Generate exactly 6 to 8 short, highly-focused micro-lessons.
@@ -251,7 +269,7 @@ Guidelines:
   5. "script": Clean, conversational, spoken explanation script for Text-to-Speech narration (approx 60-120 words).
   6. "key_points": Array of 3-4 bullet points summarizing key takeaways.
   7. "example": 1 intuitive analogy or practical real-world scenario.
-  8. "code_snippet": Short clean code example if technical, or null if conceptual.
+  8. "code_snippet": Short clean code example if technical, or null if conceptual (e.g. for English/soft skills).
   9. "code_language": Language name e.g. "javascript", "python", "html", "css", "sql", or null.
   10. "visual_diagram": ASCII art or structured box layout visualizing the concept.
 
@@ -272,7 +290,7 @@ Respond in strict JSON with the following structure:
       "key_points": ["...", "..."],
       "example": "...",
       "code_snippet": "...",
-      "code_language": "javascript",
+      "code_language": null,
       "visual_diagram": "..."
     }}
   ]
@@ -280,32 +298,50 @@ Respond in strict JSON with the following structure:
 
         strategy, models = model_router.route_task("lesson_plan_generation")
 
-        parsed_data = None
+        parsed_data: Optional[Dict[str, Any]] = None
         latency = 200
         is_fallback = False
+        model_used = models[0]
 
         try:
             parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
                 prompt=prompt,
-                system_instruction=PromptTemplates.SYSTEM_BASE,
-                fallback_data=fallback_dict
+                system_instruction=PromptTemplates.SYSTEM_BASE
             )
-        except Exception:
+            model_used = models[0]
+            logger.info(f"[MicroTutor-Pipeline] Gemini generated lessons in {latency}ms")
+        except Exception as gemini_err:
+            logger.warning(f"[MicroTutor-Pipeline] Primary Gemini failed ({gemini_err}). Attempting Groq fallback...")
             try:
                 parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
                     prompt=prompt,
-                    system_instruction=PromptTemplates.SYSTEM_BASE,
-                    fallback_data=fallback_dict
+                    system_instruction=PromptTemplates.SYSTEM_BASE
                 )
+                model_used = "openai/gpt-oss-120b (Groq LPU)"
                 is_fallback = False
-            except Exception:
-                parsed_data = fallback_dict
-                latency = 120
-                is_fallback = True
+                logger.info(f"[MicroTutor-Pipeline] Groq fallback generated lessons in {latency}ms")
+            except Exception as groq_err:
+                logger.error(f"[MicroTutor-Pipeline] Both Gemini and Groq failed ({groq_err})")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="AI Micro-Learning Tutor service unavailable: both Gemini and Groq failed"
+                )
+
+        # Relevance Guard verification
+        is_valid, rejection_reason = relevance_guard.validate_learning_content(topic, parsed_data)
+        if not is_valid:
+            logger.warning(f"[MicroTutor-Pipeline] Guard rejected response: {rejection_reason}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Topic contamination guard rejected generated content: {rejection_reason}"
+            )
 
         raw_lessons = parsed_data.get("lessons", [])
         if not raw_lessons or not isinstance(raw_lessons, list):
-            raw_lessons = fallback_dict["lessons"]
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Micro-learning generation returned invalid structured response"
+            )
 
         formatted_lessons: List[MicroLesson] = []
         for idx, l in enumerate(raw_lessons):

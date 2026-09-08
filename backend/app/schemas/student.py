@@ -166,6 +166,10 @@ class LearningResourceResponse(BaseModel):
     is_free: bool
     rating: float
     progress_status: Optional[str] = "not_started"  # 'not_started', 'in_progress', 'completed'
+    description: Optional[str] = None
+    visibility: Optional[str] = "global"
+    institution_id: Optional[str] = None
+    department_id: Optional[str] = None
 
 class LearningProgressUpdateRequest(BaseModel):
     resource_id: str

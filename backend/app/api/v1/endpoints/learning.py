@@ -29,6 +29,8 @@ async def generate_micro_learning_path(
     user_id = str(getattr(current_user, "id", None) or getattr(current_user, "sub", "u1000000-0000-0000-0000-000000000001"))
     try:
         return await micro_tutor_service.generate_learning_path(user_id=user_id, payload=payload)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to generate learning path: {e}", exc_info=True)
         raise HTTPException(

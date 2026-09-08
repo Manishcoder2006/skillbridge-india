@@ -1,5 +1,6 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
+from app.models.enums import ContentVisibility
 
 # ------------------------------------------------------------------------------
 # 1. Profile Schemas
@@ -106,8 +107,18 @@ class FacultyContentCreate(BaseModel):
     resource_type: str = Field("tutorial", description="course, tutorial, video, pdf, workshop")
     url: str = Field(..., min_length=5)
     description: Optional[str] = None
-    visibility: str = Field("department", description="department, institution, public")
+    visibility: str = Field("department", description="department, institution, global")
     is_published: bool = True
+
+    @field_validator("visibility", mode="before")
+    @classmethod
+    def validate_visibility(cls, v: str) -> str:
+        val = str(v or "department").lower().strip()
+        if val in ["public", "all", "all students"]:
+            return "global"
+        if val not in ["department", "institution", "global"]:
+            raise ValueError("visibility must be one of: department, institution, global")
+        return val
 
 class FacultyContentUpdate(BaseModel):
     title: Optional[str] = None
@@ -118,6 +129,18 @@ class FacultyContentUpdate(BaseModel):
     description: Optional[str] = None
     visibility: Optional[str] = None
     is_published: Optional[bool] = None
+
+    @field_validator("visibility", mode="before")
+    @classmethod
+    def validate_visibility(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        val = str(v).lower().strip()
+        if val in ["public", "all", "all students"]:
+            return "global"
+        if val not in ["department", "institution", "global"]:
+            raise ValueError("visibility must be one of: department, institution, global")
+        return val
 
 class FacultyContentResponse(BaseModel):
     id: str

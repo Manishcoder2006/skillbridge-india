@@ -280,8 +280,8 @@ export const InterviewReport = ({ report, onPracticeAgain, onBackToHub }) => {
                           width: '26px',
                           height: '26px',
                           borderRadius: '50%',
-                          background: qr.score >= 8 ? '#dcfce7' : '#fef3c7',
-                          color: qr.score >= 8 ? '#15803d' : '#b45309',
+                          background: qr.score >= 75 ? '#dcfce7' : qr.score >= 40 ? '#fef3c7' : '#fee2e2',
+                          color: qr.score >= 75 ? '#15803d' : qr.score >= 40 ? '#b45309' : '#dc2626',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -307,14 +307,14 @@ export const InterviewReport = ({ report, onPracticeAgain, onBackToHub }) => {
                         style={{
                           padding: '0.2rem 0.6rem',
                           borderRadius: '6px',
-                          background: qr.score >= 8 ? '#ecfdf5' : '#fffbeb',
-                          border: qr.score >= 8 ? '1px solid #a7f3d0' : '1px solid #fde68a',
-                          color: qr.score >= 8 ? '#065f46' : '#92400e',
+                          background: qr.score >= 75 ? '#ecfdf5' : qr.score >= 40 ? '#fffbeb' : '#fef2f2',
+                          border: qr.score >= 75 ? '1px solid #a7f3d0' : qr.score >= 40 ? '1px solid #fde68a' : '1px solid #fecaca',
+                          color: qr.score >= 75 ? '#065f46' : qr.score >= 40 ? '#92400e' : '#b91c1c',
                           fontWeight: 800,
                           fontSize: '0.8rem',
                         }}
                       >
-                        {qr.score}/10
+                        {qr.score}/100
                       </span>
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </div>
@@ -351,6 +351,36 @@ export const InterviewReport = ({ report, onPracticeAgain, onBackToHub }) => {
                           "{qr.answer_text}"
                         </div>
                       </div>
+
+                      {/* Covered & Missing Key Points (if present) */}
+                      {((qr.covered_key_points && qr.covered_key_points.length > 0) || (qr.missing_key_points && qr.missing_key_points.length > 0)) && (
+                        <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                          {qr.covered_key_points && qr.covered_key_points.length > 0 && (
+                            <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#15803d', marginBottom: '0.3rem' }}>
+                                ✓ Concepts Covered
+                              </div>
+                              <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.75rem', color: '#334155', lineHeight: '1.4' }}>
+                                {qr.covered_key_points.map((kp, i) => (
+                                  <li key={i}>{kp}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {qr.missing_key_points && qr.missing_key_points.length > 0 && (
+                            <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.75rem', color: '#b45309', marginBottom: '0.3rem' }}>
+                                • Concepts Missing / To Address
+                              </div>
+                              <ul style={{ paddingLeft: '1.1rem', margin: 0, fontSize: '0.75rem', color: '#334155', lineHeight: '1.4' }}>
+                                {qr.missing_key_points.map((kp, i) => (
+                                  <li key={i}>{kp}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Evaluation Breakdown */}
                       <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>

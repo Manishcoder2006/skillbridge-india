@@ -526,17 +526,122 @@ class StudentRepository:
     def get_student_assessment_results(self, student_id: str) -> List[Dict[str, Any]]:
         return [att for att in PHASE2_MOCK_STORE["assessment_attempts"] if str(att["student_id"]) == str(student_id)]
 
-    def get_learning_resources(self, student_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_learning_resources(
+        self,
+        student_id: Optional[str] = None,
+        institution_id: Optional[str] = None,
+        department_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        # Resolve student institution & department scope if not explicitly passed
+        if student_id and (not institution_id or not department_id):
+            prof = self.get_full_student_profile(student_id)
+            if prof:
+                institution_id = institution_id or prof.get("institution_id")
+                department_id = department_id or prof.get("department_id")
+
+        if student_id and (not institution_id or not department_id):
+            for p in MOCK_DATA_STORE.get("profiles", []):
+                if str(p.get("id")) == str(student_id):
+                    institution_id = institution_id or p.get("institution_id")
+                    department_id = department_id or p.get("department_id")
+                    break
+
+        if student_id and (not institution_id or not department_id):
+            try:
+                from app.repositories.academician_repository import PHASE3_DATA_STORE
+                for s in PHASE3_DATA_STORE.get("students", []):
+                    if str(s.get("id")) == str(student_id):
+                        institution_id = institution_id or s.get("institution_id")
+                        department_id = department_id or s.get("department_id")
+                        break
+            except Exception:
+                pass
+
         progress_map = {}
         if student_id:
-            for p in PHASE2_MOCK_STORE["student_learning_progress"]:
-                if str(p["student_id"]) == str(student_id):
-                    progress_map[str(p["resource_id"])] = p["status"]
+            for p in PHASE2_MOCK_STORE.get("student_learning_progress", []):
+                if str(p.get("student_id")) == str(student_id):
+                    progress_map[str(p.get("resource_id"))] = p.get("status")
 
+        # 1. Base / Platform learning resources (legacy rows default to global visibility)
+        all_resources = []
+        seen_ids = set()
+
+        for r in PHASE2_MOCK_STORE.get("learning_resources", []):
+            item = dict(r)
+            item.setdefault("visibility", "global")
+            item.setdefault("is_active", True)
+            item.setdefault("is_published", True)
+            all_resources.append(item)
+            seen_ids.add(str(item.get("id")))
+
+        # 2. Merge faculty-published content from PHASE3_DATA_STORE
+        try:
+            from app.repositories.academician_repository import PHASE3_DATA_STORE
+            for fc in PHASE3_DATA_STORE.get("faculty_content", []):
+                fc_id = str(fc.get("id"))
+                if fc_id not in seen_ids:
+                    item = {
+                        "id": fc_id,
+                        "title": fc.get("title"),
+                        "category": fc.get("category", "Curriculum"),
+                        "skill_tag": fc.get("skill_tag", "General"),
+                        "resource_type": fc.get("resource_type", "tutorial"),
+                        "provider": fc.get("academician_name") or "Faculty Curator",
+                        "duration": fc.get("duration", "2 hours"),
+                        "url": fc.get("url", "#"),
+                        "level": fc.get("level", "intermediate"),
+                        "is_free": True,
+                        "rating": 4.8,
+                        "description": fc.get("description", ""),
+                        "visibility": fc.get("visibility", "department"),
+                        "institution_id": fc.get("institution_id"),
+                        "department_id": fc.get("department_id"),
+                        "academician_id": fc.get("academician_id"),
+                        "is_published": fc.get("is_published", True),
+                        "is_active": fc.get("is_published", True),
+                        "created_at": fc.get("created_at")
+                    }
+                    all_resources.append(item)
+                    seen_ids.add(fc_id)
+        except Exception as e:
+            logger.warning(f"Could not load faculty content into learning resources: {e}")
+
+        # 3. Server-side Visibility Scoping
         result = []
-        for r in PHASE2_MOCK_STORE["learning_resources"]:
-            status = progress_map.get(str(r["id"]), "not_started")
-            result.append({**r, "progress_status": status})
+        stud_inst_str = str(institution_id) if institution_id else None
+        stud_dept_str = str(department_id) if department_id else None
+
+        for r in all_resources:
+            # Active/published guard
+            if not r.get("is_published", True) or not r.get("is_active", True):
+                continue
+
+            vis = str(r.get("visibility", "global")).lower().strip()
+            res_inst_str = str(r.get("institution_id")) if r.get("institution_id") else None
+            res_dept_str = str(r.get("department_id")) if r.get("department_id") else None
+
+            allowed = False
+            if vis in ["global", "public", "all", "all students"]:
+                # global → any authenticated student can access
+                allowed = True
+            elif vis == "institution":
+                # institution → student's institution_id must match
+                allowed = bool(stud_inst_str and res_inst_str and stud_inst_str == res_inst_str)
+            elif vis == "department":
+                # department → student's institution_id AND department_id must match
+                allowed = bool(
+                    stud_inst_str and res_inst_str and stud_inst_str == res_inst_str and
+                    stud_dept_str and res_dept_str and stud_dept_str == res_dept_str
+                )
+            else:
+                # Safe fallback
+                allowed = True
+
+            if allowed:
+                status = progress_map.get(str(r["id"]), "not_started")
+                result.append({**r, "progress_status": status})
+
         return result
 
     def update_learning_progress(self, student_id: str, resource_id: str, status: str, progress_percent: int) -> Dict[str, Any]:

@@ -93,6 +93,15 @@ class AcademicianService:
 
     def create_content(self, user: Any, data: Dict[str, Any]) -> Dict[str, Any]:
         user_id, inst_id, dept_id, full_name = _extract_user_fields(user)
+        vis = str(data.get("visibility", "department")).lower().strip()
+        if vis in ["public", "all", "all students"]:
+            vis = "global"
+        if vis not in ["department", "institution", "global"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Visibility must be one of: department, institution, global"
+            )
+        data["visibility"] = vis
         return academician_repo.create_faculty_content(
             user_id,
             full_name,
@@ -103,6 +112,16 @@ class AcademicianService:
 
     def update_content(self, user: Any, content_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         user_id, _, _, _ = _extract_user_fields(user)
+        if "visibility" in data and data["visibility"] is not None:
+            vis = str(data["visibility"]).lower().strip()
+            if vis in ["public", "all", "all students"]:
+                vis = "global"
+            if vis not in ["department", "institution", "global"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Visibility must be one of: department, institution, global"
+                )
+            data["visibility"] = vis
         updated = academician_repo.update_faculty_content(content_id, user_id, data)
         if not updated:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found or unauthorized to edit.")

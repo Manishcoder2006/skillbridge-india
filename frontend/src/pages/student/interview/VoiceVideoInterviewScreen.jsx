@@ -40,6 +40,7 @@ export const VoiceVideoInterviewScreen = ({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [autoProgressState, setAutoProgressState] = useState('idle'); // 'idle' | 'ai_speaking' | 'listening' | 'evaluating' | 'transitioning'
   const [lastEvaluatedScore, setLastEvaluatedScore] = useState(null);
+  const [lastEvaluation, setLastEvaluation] = useState(null);
 
   const videoRef = useRef(null);
   const currentQuestion = questions[currentIndex] || questions[0];
@@ -53,6 +54,7 @@ export const VoiceVideoInterviewScreen = ({
       const evalResult = await onSubmitAnswer(currentQuestion.id, spokenText.trim());
       if (evalResult?.score !== undefined) {
         setLastEvaluatedScore(evalResult.score);
+        setLastEvaluation(evalResult);
       }
 
       // Check if this was the last question
@@ -60,15 +62,16 @@ export const VoiceVideoInterviewScreen = ({
         setAutoProgressState('transitioning');
         setTimeout(() => {
           onCompleteInterview();
-        }, 1200);
+        }, 1800);
       } else {
         // Move to next question automatically
         setAutoProgressState('transitioning');
         setTimeout(() => {
           setCurrentIndex((prev) => prev + 1);
           setLastEvaluatedScore(null);
+          setLastEvaluation(null);
           setAutoProgressState('idle');
-        }, 1500);
+        }, 2200);
       }
     } catch (err) {
       console.error('Error submitting verbal answer:', err);
@@ -943,23 +946,35 @@ export const VoiceVideoInterviewScreen = ({
           }}
         >
           {/* Quick Status / Score Badge if just evaluated */}
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
             {lastEvaluatedScore !== null && (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  color: '#15803d',
-                  background: '#dcfce7',
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '6px',
-                }}
-              >
-                <Check size={14} /> Answer Recorded • Score: {lastEvaluatedScore}/10
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: lastEvaluatedScore >= 75 ? '#15803d' : lastEvaluatedScore >= 40 ? '#b45309' : '#dc2626',
+                    background: lastEvaluatedScore >= 75 ? '#dcfce7' : lastEvaluatedScore >= 40 ? '#fef3c7' : '#fee2e2',
+                    padding: '0.3rem 0.65rem',
+                    borderRadius: '6px',
+                  }}
+                >
+                  <Check size={14} /> Answer Evaluated • Score: {lastEvaluatedScore}/100
+                </span>
+                {lastEvaluation?.assessment && (
+                  <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                    {lastEvaluation.assessment}
+                  </span>
+                )}
+              </div>
+            )}
+            {lastEvaluation?.missing_key_points && lastEvaluation.missing_key_points.length > 0 && (
+              <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600 }}>
+                Missing: {lastEvaluation.missing_key_points.slice(0, 2).join(' • ')}
+              </div>
             )}
           </div>
 

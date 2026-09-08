@@ -86,6 +86,8 @@ async def submit_interview_answer(
             question_id=payload.question_id,
             answer_text=payload.answer_text
         )
+    except HTTPException as http_exc:
+        raise http_exc
     except ValueError as ve:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(ve))
     except Exception as e:

@@ -25,6 +25,7 @@ class InterviewQuestion(BaseModel):
     difficulty: str = "intermediate"  # beginner | intermediate | advanced
     hint: Optional[str] = None
     evaluation_criteria: Optional[List[str]] = Field(default_factory=list)
+    expected_key_points: Optional[List[str]] = Field(default_factory=list)
 
 
 class InterviewResponse(BaseModel):
@@ -51,7 +52,15 @@ class AnswerSubmitRequest(BaseModel):
 
 class AnswerEvaluationResponse(BaseModel):
     question_id: str
-    score: int = Field(..., ge=0, le=10, description="Score from 0 to 10")
+    score: int = Field(..., ge=0, le=100, description="Score from 0 to 100")
+    technical_correctness: Optional[int] = Field(default=0, ge=0, le=40, description="Technical correctness (0-40)")
+    relevance: Optional[int] = Field(default=0, ge=0, le=40, description="Relevance to question (0-25 for technical, 0-40 for HR)")
+    completeness: Optional[int] = Field(default=0, ge=0, le=20, description="Completeness & depth (0-20)")
+    communication: Optional[int] = Field(default=0, ge=0, le=25, description="Communication & clarity (0-15 for technical, 0-25 for HR)")
+    professionalism: Optional[int] = Field(default=None, ge=0, le=15, description="Professionalism & consistency (0-15 for HR)")
+    assessment: Optional[str] = Field(default="Evaluation complete", description="Overall assessment summary")
+    covered_key_points: Optional[List[str]] = Field(default_factory=list, description="Concepts correctly addressed")
+    missing_key_points: Optional[List[str]] = Field(default_factory=list, description="Important concepts missed")
     strengths: List[str] = Field(default_factory=list)
     improvements: List[str] = Field(default_factory=list)
     suggested_answer_points: Optional[List[str]] = Field(default_factory=list)
@@ -74,6 +83,8 @@ class QuestionReviewItem(BaseModel):
     category: str
     answer_text: str
     score: int
+    covered_key_points: Optional[List[str]] = Field(default_factory=list)
+    missing_key_points: Optional[List[str]] = Field(default_factory=list)
     strengths: List[str] = Field(default_factory=list)
     improvements: List[str] = Field(default_factory=list)
 

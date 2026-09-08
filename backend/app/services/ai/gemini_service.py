@@ -27,11 +27,9 @@ class GeminiService:
         """
         start_time = time.time()
 
-        if not self.api_key or self.api_key.startswith("your-"):
-            # In production fallback is disabled; raise error
-            if not settings.AI_SIMULATION_FALLBACK:
-                from fastapi import HTTPException
-                raise HTTPException(status_code=503, detail="Gemini API key missing or invalid")
+        if not self.api_key or self.api_key.startswith("your-") or self.api_key.startswith("AQ."):
+            if not settings.AI_SIMULATION_FALLBACK or fallback_data is None:
+                raise RuntimeError("Gemini API key missing, invalid, or unconfigured")
             logger.info("Gemini API key not configured. Using deterministic high-fidelity simulation engine.")
             latency = int((time.time() - start_time) * 1000) + 120
             return (fallback_data or {}, latency, True)
@@ -76,16 +74,16 @@ class GeminiService:
                             parsed = json.loads(raw_text.strip())
                             return (parsed, latency, False)
 
-                logger.warning(f"Gemini API returned status {res.status_code}: {res.text}. Falling back to simulation.")
-                # If fallback is disabled in production, raise error
-                if not settings.AI_SIMULATION_FALLBACK:
-                    from fastapi import HTTPException
-                    raise HTTPException(status_code=503, detail="Gemini API request failed with status {res.status_code}")
+                error_msg = f"Gemini API returned status {res.status_code}: {res.text[:200]}"
+                logger.warning(error_msg)
+                if not settings.AI_SIMULATION_FALLBACK or fallback_data is None:
+                    raise RuntimeError(error_msg)
         except Exception as e:
-            logger.warning(f"Gemini API call failed with exception: {e}. Falling back to simulation.")
-            if not settings.AI_SIMULATION_FALLBACK:
-                from fastapi import HTTPException
-                raise HTTPException(status_code=503, detail="Gemini API request exception")
+            if isinstance(e, RuntimeError):
+                raise
+            logger.warning(f"Gemini API call failed with exception: {e}")
+            if not settings.AI_SIMULATION_FALLBACK or fallback_data is None:
+                raise RuntimeError(f"Gemini API request failed: {e}") from e
 
         latency = int((time.time() - start_time) * 1000) + 150
         return (fallback_data or {}, latency, True)

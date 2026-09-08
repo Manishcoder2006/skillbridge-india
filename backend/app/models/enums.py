@@ -26,3 +26,9 @@ class AcademicianRoleLevel(str, Enum):
     HOD = "hod"
     DEAN = "dean"
     PLACEMENT_COORDINATOR = "placement_coordinator"
+
+class ContentVisibility(str, Enum):
+    DEPARTMENT = "department"
+    INSTITUTION = "institution"
+    GLOBAL = "global"
+

@@ -125,15 +125,12 @@ export const SkillsAndCareer = () => {
     try {
       setIsEvaluatingAnswer(true);
       const evalResult = await apiService.submitInterviewAnswer(activeSession.id, questionId, answerText);
-      showSuccess(`Question evaluated: Score ${evalResult.score}/10!`);
+      showSuccess(`Question evaluated: Score ${evalResult.score}/100!`);
       return evalResult;
     } catch (err) {
-      showError('Failed to evaluate answer. Retrying fallback...');
-      return {
-        score: 7,
-        strengths: ['Good foundational reasoning', 'Addressed the core question'],
-        improvements: ['Could provide deeper syntax and performance tradeoffs'],
-      };
+      const errMsg = err.response?.data?.detail || 'Failed to evaluate interview answer.';
+      showError(errMsg);
+      throw err;
     } finally {
       setIsEvaluatingAnswer(false);
     }

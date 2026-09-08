@@ -234,6 +234,51 @@ Generate a JSON object with:
 }}"""
 
     @staticmethod
+    def learning_recommendations_prompt(
+        topic_or_query: str,
+        student_skills: List[str],
+        rag_resources: List[Dict[str, Any]]
+    ) -> str:
+        rag_text = "\n".join([
+            f"- [{r.get('title')}] ({r.get('category')} / {r.get('skill_tag')}): {r.get('content')} | Provider: {r.get('provider')} | Level: {r.get('level')} | Duration: {r.get('duration')} | URL: {r.get('url')}"
+            for r in rag_resources
+        ]) if rag_resources else "None retrieved"
+
+        return f"""You are the SkillBridge India Elite AI Pedagogical & Learning Architect (SIH 2026).
+The student has submitted the following learning query / focus topic:
+"{topic_or_query}"
+
+Student Background Skills: {', '.join(student_skills) if student_skills else 'Beginner / General'}
+
+Retrieved RAG Learning Resources & Context (Strictly prioritize these domain-specific resources):
+{rag_text}
+
+MANDATORY RULES:
+1. The student's CURRENT QUERY/TOPIC ("{topic_or_query}") MUST strictly control the learning recommendations.
+2. If the student asks for English, communication, language, grammar, or speaking, you MUST generate an English communication learning roadmap. DO NOT generate frontend/web development/React/JavaScript content!
+3. If the student asks for Python, generate a Python roadmap.
+4. If the student asks for React, generate a React roadmap.
+5. Incorporate the retrieved RAG learning resources directly into the recommended courses.
+
+Respond in strict JSON with the following structure:
+{{
+  "learning_path_title": "<Concise, inspiring roadmap title strictly matching the requested topic>",
+  "estimated_completion_weeks": 4,
+  "recommended_courses": [
+    {{
+      "title": "<Course/Tutorial Title>",
+      "provider": "<Provider e.g. Swayam, British Council, NPTEL, SkillBridge>",
+      "url": "<URL>",
+      "skill_tag": "<Specific Skill Tag>",
+      "level": "beginner|intermediate|advanced",
+      "duration": "<e.g. 4 weeks, 6 hours>",
+      "is_platform_resource": true,
+      "match_reason": "<1-sentence reason why this addresses the student's current topic>"
+    }}
+  ]
+}}"""
+
+    @staticmethod
     def interview_questions_generate_prompt(
         role: str,
         interview_type: str,
@@ -242,25 +287,33 @@ Generate a JSON object with:
         num_questions: int,
         resume_summary: Optional[str] = None,
         job_description: Optional[str] = None,
-        custom_instructions: Optional[str] = None
+        custom_instructions: Optional[str] = None,
+        rag_competencies: Optional[List[Dict[str, Any]]] = None
     ) -> str:
         skills_str = ", ".join(skills) if skills else "Core domain skills"
         resume_ctx = f"\nCandidate Verified Resume Context:\n{resume_summary}" if resume_summary else ""
         jd_ctx = f"\nTarget Job Description:\n{job_description}" if job_description else ""
         custom_ctx = f"\nCustom Instructions:\n{custom_instructions}" if custom_instructions else ""
 
+        rag_ctx = ""
+        if rag_competencies:
+            rag_lines = "\n".join([f"- [{c.get('category')}]: {c.get('content')}" for c in rag_competencies])
+            rag_ctx = f"\nRetrieved RAG Competency Context for {role}:\n{rag_lines}\n"
+
         return f"""You are the SkillBridge India Elite AI Interviewer (SIH 2026).
-Generate exactly {num_questions} realistic, highly tailored interview questions for:
+Generate exactly {num_questions} realistic, highly tailored, diverse interview questions for:
 Target Role: {role}
 Interview Mode: {interview_type.upper()} (Technical, HR, or Custom)
 Experience Level: {experience_level}
-Key Skills: {skills_str}{resume_ctx}{jd_ctx}{custom_ctx}
+Key Skills: {skills_str}{resume_ctx}{jd_ctx}{custom_ctx}{rag_ctx}
 
-Guidelines:
-- Technical mode: Focus on architectural depth, data structures & algorithms, real-world coding decisions, framework mechanics, debugging, and system design.
-- HR mode: Focus on behavioral STAR-method scenarios, teamwork, workplace conflicts, ethics, career vision, strengths, and communication.
-- Custom mode: Strictly adhere to the requested focus, skills, and custom instructions.
-- Ensure questions are progressively challenging and realistic for Indian technology campuses and industry recruitment standards.
+MANDATORY RULES:
+1. Target Role "{role}" and Mode "{interview_type}" MUST strictly control question generation.
+2. If role is "Python Developer" or backend, questions MUST focus on Python, data structures, GIL, async, backend architecture. NEVER ask React or frontend questions.
+3. If role is "Frontend Developer", questions MUST focus on frontend, React, DOM, state, CSS.
+4. If role is "HR Interview", questions MUST focus on behavioral STAR scenarios, communication, ethics, teamwork.
+5. Every generated question MUST be dynamically formulated (avoid repeating identical static question text across sessions).
+6. For each question, provide 3 to 5 concrete 'expected_key_points' that an ideal answer MUST address.
 
 Respond in strict JSON with the following structure:
 {{
@@ -272,7 +325,12 @@ Respond in strict JSON with the following structure:
       "category": "<Category e.g. Algorithms / Databases / Behavioral / System Design>",
       "difficulty": "beginner|intermediate|advanced",
       "hint": "<A short helpful guidance tip or thought framework for the student>",
-      "evaluation_criteria": ["<Key concept 1>", "<Key concept 2>", "<Key concept 3>"]
+      "evaluation_criteria": ["<Key criterion 1>", "<Key criterion 2>", "<Key criterion 3>"],
+      "expected_key_points": [
+        "<Essential concept 1 that must be explained>",
+        "<Essential concept 2 that must be explained>",
+        "<Essential concept 3 that must be explained>"
+      ]
     }}
   ]
 }}"""
@@ -283,26 +341,113 @@ Respond in strict JSON with the following structure:
         question_text: str,
         category: str,
         answer_text: str,
-        evaluation_criteria: List[str]
+        evaluation_criteria: Optional[List[str]] = None,
+        expected_key_points: Optional[List[str]] = None,
+        interview_type: str = "technical"
     ) -> str:
         criteria_str = ", ".join(evaluation_criteria) if evaluation_criteria else "Correctness, technical depth, clarity"
+        key_points_list = expected_key_points or evaluation_criteria or [
+            "Demonstration of core concept",
+            "Accurate technical explanation or behavioral context",
+            "Clear articulation of tradeoffs or outcomes"
+        ]
+        key_points_str = "\n".join([f"- {kp}" for kp in key_points_list])
 
-        return f"""You are an expert technical and HR interviewer evaluating a student candidate's response.
-Role: {role}
+        is_hr = str(interview_type).lower() == "hr"
+
+        if is_hr:
+            rubric_instructions = """EVALUATION RUBRIC FOR HR / BEHAVIORAL INTERVIEW:
+Evaluate on 4 specific dimensions (Total 100 points maximum):
+1. Behavioral Relevance / Alignment (0 to 40):
+   - Does the candidate actually answer the prompt with a genuine, relevant personal or academic scenario?
+   - If completely off-topic or irrelevant: award <= 5 points and set is_off_topic=true.
+2. Communication / Clarity (0 to 25):
+   - Is the response articulate, structured, clear, and professional?
+3. Completeness / Context (0 to 20):
+   - Does the candidate provide sufficient context (Situation, Task, Action, Result)?
+4. Professionalism / Consistency (0 to 15):
+   - Demonstrates workplace ethics, maturity, teamwork, accountability, and self-awareness.
+
+NOTE FOR HR: Do NOT demand technical/programming keywords. Evaluate behavioral reasoning, communication, and interpersonal maturity."""
+        else:
+            rubric_instructions = """EVALUATION RUBRIC FOR TECHNICAL INTERVIEW:
+Evaluate on 4 specific dimensions (Total 100 points maximum):
+1. Technical Correctness (0 to 40):
+   - Is the explanation accurate according to computer science & software engineering principles?
+   - If fundamentally incorrect or displaying major misconceptions: award <= 10 points and set is_fundamentally_incorrect=true.
+   - If completely off-topic or discussing something unrelated: award <= 5 points.
+2. Relevance to Question (0 to 25):
+   - Does the answer address what was asked?
+   - If completely off-topic: award <= 5 points and set is_off_topic=true.
+3. Completeness / Depth (0 to 20):
+   - Did the candidate cover the critical expected concepts without major gaps?
+4. Communication / Clarity (0 to 15):
+   - Is the terminology used accurately and explained clearly?
+
+NOTE FOR TECHNICAL:
+- STRICT: Technical correctness and relevance must dominate.
+- Do NOT reward length, verbosity, confidence, filler, or keyword stuffing.
+- If a candidate writes a long paragraph about Python projects when asked about process vs thread, it is OFF-TOPIC.
+- Short answers that completely and accurately answer the question (e.g. 'Hypertext Transfer Protocol' for HTTP) MUST receive high scores (85-100). Do NOT penalize brevity when accurate."""
+
+        return f"""You are the SkillBridge India Senior Evaluator (SIH 2026).
+Evaluate the candidate's answer strictly, objectively, and content-aware.
+
+Target Role: {role}
+Interview Mode: {interview_type.upper()}
 Category: {category}
-Question: {question_text}
-Evaluation Criteria: {criteria_str}
+Question Asked:
+"{question_text}"
+
+Expected Key Points:
+{key_points_str}
+
+General Evaluation Criteria:
+{criteria_str}
 
 Candidate's Submitted Answer:
 "{answer_text}"
 
-Evaluate the answer objectively on technical correctness, conceptual depth, structure, communication, and completeness.
-Generate a valid JSON object with:
+{rubric_instructions}
+
+CONTENT-AWARE & SEMANTIC MATCHING GUIDELINES:
+- Compare the answer SEMANTICALLY with the question and expected key points.
+- Identify which expected concepts the candidate ACTUALLY covered (covered_key_points).
+- Identify which expected concepts the candidate MISSED (missing_key_points).
+- Score bands guidance:
+  * 0–5: Refusal, gibberish, empty, or completely unusable.
+  * 6–20: Clearly off-topic, irrelevant, or nonsensical answer.
+  * 21–40: Very weak answer with major misconceptions or missing core concepts.
+  * 41–60: Partially correct answer with significant gaps.
+  * 61–75: Generally correct answer with minor omissions.
+  * 76–89: Strong and relevant answer covering most critical points.
+  * 90–100: Excellent, accurate, complete, and precise answer.
+
+Respond strictly in valid JSON format:
 {{
-  "score": <integer from 0 to 10 based on quality and accuracy>,
-  "strengths": [<2-3 specific strong points of their response>],
-  "improvements": [<1-2 constructive, actionable points for improvement or missing depth>],
-  "suggested_answer_points": [<2-3 key insights or best practices an ideal candidate would mention>]
+  "is_off_topic": false,
+  "is_fundamentally_incorrect": false,
+  "technical_correctness": <integer 0-40 (or 0 for HR)>,
+  "relevance": <integer 0-25 for technical, 0-40 for HR>,
+  "completeness": <integer 0-20>,
+  "communication": <integer 0-15 for technical, 0-25 for HR>,
+  "professionalism": <integer 0-15 for HR, 0 for technical>,
+  "assessment": "<Brief concise evaluation e.g. Excellent / Strong and accurate / Partially correct with missing depth / Off-topic response>",
+  "covered_key_points": [
+    "<Concept 1 that the candidate successfully explained>"
+  ],
+  "missing_key_points": [
+    "<Concept 2 that the candidate omitted or failed to explain>"
+  ],
+  "strengths": [
+    "<1-2 specific factual strengths of what candidate explained>"
+  ],
+  "improvements": [
+    "<1-2 actionable technical or behavioral points to improve>"
+  ],
+  "suggested_answer_points": [
+    "<2-3 concise points an ideal candidate would mention>"
+  ]
 }}"""
 
     @staticmethod
@@ -317,7 +462,7 @@ Generate a valid JSON object with:
         qa_history = "\n".join([
             f"Q{item.get('question_number', idx + 1)}: {item.get('question_text', '')} (Category: {item.get('category', 'General')})\n"
             f"Candidate Spoken Answer: \"{item.get('answer_text', '')}\"\n"
-            f"Evaluation Score: {item.get('score', 7)}/10\n"
+            f"Evaluation Score: {item.get('score', 70)}/100\n"
             for idx, item in enumerate(previous_qa)
         ])
         return f"""You are the SkillBridge India Adaptive AI Interviewer.
@@ -330,9 +475,10 @@ Candidate's Previous Performance and Spoken Answers:
 {qa_history}
 
 Generate the NEXT adaptive interview question (Question {next_question_number} of {total_questions}):
-- If the candidate answered previous questions strongly (score >= 8), elevate the depth: test architectural tradeoffs, edge cases, scalability, or complex real-world decisions.
-- If the candidate gave a shorter or basic answer (score <= 5), pivot to test core underlying fundamentals and foundational principles.
+- If the candidate answered previous questions strongly (score >= 75), elevate the depth: test architectural tradeoffs, edge cases, scalability, or complex real-world decisions.
+- If the candidate gave a weak or basic answer (score <= 50), pivot to test core underlying fundamentals and foundational principles.
 - Ensure the question is spoken cleanly, conversational, and explores a fresh dimension.
+- Include 3 to 5 expected_key_points.
 
 Respond in strict JSON:
 {{
@@ -342,7 +488,12 @@ Respond in strict JSON:
   "category": "<Category e.g. System Design / Databases / Concurrency / Behavioral / Architecture>",
   "difficulty": "beginner|intermediate|advanced",
   "hint": "<A concise thinking framework to guide the candidate>",
-  "evaluation_criteria": ["<Key concept 1>", "<Key concept 2>", "<Key concept 3>"]
+  "evaluation_criteria": ["<Key concept 1>", "<Key concept 2>", "<Key concept 3>"],
+  "expected_key_points": [
+    "<Expected concept 1>",
+    "<Expected concept 2>",
+    "<Expected concept 3>"
+  ]
 }}"""
 
     @staticmethod

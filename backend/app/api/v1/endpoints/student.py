@@ -121,7 +121,11 @@ def get_assessment_results(
 def list_learning_resources(
     current_user: AuthenticatedUser = Depends(student_guard)
 ):
-    return student_repo.get_learning_resources(current_user.id)
+    return student_repo.get_learning_resources(
+        student_id=current_user.id,
+        institution_id=current_user.institution_id,
+        department_id=current_user.department_id
+    )
 
 @router.post("/learning-progress")
 def update_learning_progress(

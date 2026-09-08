@@ -44,10 +44,24 @@ CREATE POLICY "assessment_attempts_self_manage" ON public.assessment_attempts
     WITH CHECK (student_id = auth.uid());
 
 -- 4. Learning Resources Policies
-CREATE POLICY "learning_resources_public_read" ON public.learning_resources
+CREATE POLICY "learning_resources_scoped_read" ON public.learning_resources
     FOR SELECT
     TO authenticated
-    USING (is_active = true);
+    USING (
+        is_active = true AND (
+            visibility = 'global'
+            OR (
+                visibility = 'institution'
+                AND institution_id = (SELECT institution_id FROM public.profiles WHERE id = auth.uid())
+            )
+            OR (
+                visibility = 'department'
+                AND institution_id = (SELECT institution_id FROM public.profiles WHERE id = auth.uid())
+                AND department_id = (SELECT department_id FROM public.profiles WHERE id = auth.uid())
+            )
+            OR academician_id = auth.uid()
+        )
+    );
 
 -- 5. Student Learning Progress
 CREATE POLICY "learning_progress_self_manage" ON public.student_learning_progress

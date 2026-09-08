@@ -1,3 +1,4 @@
+import re
 import time
 import uuid
 import logging
@@ -8,6 +9,9 @@ from app.services.ai.gemini_service import gemini_service
 from app.services.ai.groq_service import groq_service
 from app.services.ai.router import model_router
 from app.services.ai.prompts import PromptTemplates, sanitize_user_context
+from app.services.ai.rag_service import rag_service
+from app.services.ai.relevance_guard import relevance_guard
+from fastapi import HTTPException, status
 from app.repositories.student_repository import student_repo, PHASE2_MOCK_STORE
 from app.repositories.user_repository import user_repo
 from app.repositories.academician_repository import academician_repo
@@ -260,41 +264,133 @@ class AIOrchestrator:
     async def get_learning_recommendations(self, user_id: str, focus_skills: Optional[List[str]] = None) -> LearningRecommendationsResponse:
         strategy, models = model_router.route_task("learning_recommendations")
 
+        # 1. Determine user topic / focus skills
+        stored_skills_records = student_repo.get_student_skills(user_id) if hasattr(student_repo, 'get_student_skills') else []
+        student_skills = [s.get("skill_name", "") for s in stored_skills_records if isinstance(s, dict) and s.get("skill_name")]
+
+        query_topic = ""
+        if focus_skills and len(focus_skills) > 0:
+            query_topic = ", ".join(focus_skills)
+        elif student_skills:
+            query_topic = student_skills[0]
+        else:
+            query_topic = "Full Stack Development"
+
+        # 2. Sync faculty resources if any
+        try:
+            faculty_resources = student_repo.get_learning_resources(user_id) if hasattr(student_repo, 'get_learning_resources') else []
+            rag_service.sync_faculty_resources(faculty_resources)
+        except Exception as e:
+            logger.debug(f"Faculty resources sync notice: {e}")
+
+        # 3. Vector RAG Search
+        rag_resources = rag_service.search_learning_resources(query=query_topic, top_k=4)
+        logger.info(
+            f"[Learning-Pipeline] User: {user_id} | Focus: '{query_topic}' | "
+            f"Normalized Topic: '{rag_service.normalize_query(query_topic)}' | "
+            f"RAG Retrieved Chunks: {len(rag_resources)}"
+        )
+
+        prompt = PromptTemplates.learning_recommendations_prompt(
+            topic_or_query=query_topic,
+            student_skills=student_skills,
+            rag_resources=rag_resources
+        )
+
+        parsed: Optional[Dict[str, Any]] = None
+        latency = 0
+        is_fallback = False
+        model_used = models[0]
+
+        # Primary: Gemini
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE
+            )
+            model_used = models[0]
+            logger.info(f"[Learning-Pipeline] Gemini successfully generated recommendations in {latency}ms")
+        except Exception as gemini_err:
+            logger.warning(f"[Learning-Pipeline] Primary Gemini failed ({gemini_err}). Attempting Groq fallback...")
+            try:
+                parsed, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE
+                )
+                model_used = "openai/gpt-oss-120b (Groq LPU)"
+                is_fallback = False
+                logger.info(f"[Learning-Pipeline] Groq fallback successfully generated recommendations in {latency}ms")
+            except Exception as groq_err:
+                logger.error(f"[Learning-Pipeline] Both Gemini and Groq failed ({groq_err})")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="AI learning recommendations service unavailable: both Gemini and Groq failed"
+                )
+
+        # 4. Relevance Guard
+        is_valid, rejection_reason = relevance_guard.validate_learning_content(query_topic, parsed)
+        if not is_valid:
+            logger.warning(f"[Learning-Pipeline] Guard rejected response: {rejection_reason}. Re-filtering with strict RAG fallback.")
+            parsed["learning_path_title"] = f"{rag_service.normalize_query(query_topic).title()} Learning Pathway"
+            parsed["recommended_courses"] = [
+                {
+                    "title": r["title"],
+                    "provider": r["provider"],
+                    "url": r["url"],
+                    "skill_tag": r["skill_tag"],
+                    "level": r.get("level", "intermediate"),
+                    "duration": r.get("duration", "4 weeks"),
+                    "is_platform_resource": True,
+                    "match_reason": f"Directly matched your learning goal for {query_topic} via SkillBridge RAG."
+                }
+                for r in rag_resources
+            ]
+
+        raw_courses = parsed.get("recommended_courses", [])
+        if not raw_courses and rag_resources:
+            raw_courses = [
+                {
+                    "title": r["title"],
+                    "provider": r["provider"],
+                    "url": r["url"],
+                    "skill_tag": r["skill_tag"],
+                    "level": r.get("level", "intermediate"),
+                    "duration": r.get("duration", "4 weeks"),
+                    "is_platform_resource": True,
+                    "match_reason": f"Curated resource for {query_topic}."
+                }
+                for r in rag_resources
+            ]
+
         recommended_items = [
             RecommendedCourseItem(
-                title="Cloud Infrastructure & Docker Containerization",
-                provider="NPTEL Cloud Series",
-                url="https://nptel.ac.in",
-                skill_tag="Docker",
-                level="intermediate",
-                duration="5 hours",
-                is_platform_resource=True,
-                match_reason="Directly bridges your critical containerization skill gap identified in diagnostics."
-            ),
-            RecommendedCourseItem(
-                title="Database Modeling & PostgreSQL Row Level Security",
-                provider="IIT Delhi Open Courseware",
-                url="https://www.postgresql.org/docs/",
-                skill_tag="PostgreSQL",
-                level="advanced",
-                duration="3 hours",
-                is_platform_resource=True,
-                match_reason="Elevates database query optimization and enterprise multi-tenant security skills."
+                title=c.get("title") or "Recommended Learning Module",
+                provider=c.get("provider") or "SkillBridge Certified",
+                url=c.get("url") or "https://swayam.gov.in",
+                skill_tag=c.get("skill_tag") or query_topic,
+                level=c.get("level") or "intermediate",
+                duration=c.get("duration") or "4 weeks",
+                is_platform_resource=bool(c.get("is_platform_resource", True)),
+                match_reason=c.get("match_reason") or f"Curated for {query_topic} competency."
             )
+            for c in raw_courses
         ]
 
-        self._log_execution(user_id, "student", "learning_recommendations", models[0], None, strategy, 130, True)
+        title = parsed.get("learning_path_title") or f"{rag_service.normalize_query(query_topic).title()} Mastery Roadmap"
+        weeks = int(parsed.get("estimated_completion_weeks", 4))
+
+        self._log_execution(user_id, "student", "learning_recommendations", model_used, None, strategy, latency, is_fallback)
 
         return LearningRecommendationsResponse(
-            learning_path_title="Enterprise Full Stack & Microservices Readiness Roadmap",
+            learning_path_title=title,
             recommended_courses=recommended_items,
-            estimated_completion_weeks=3,
+            estimated_completion_weeks=weeks,
             ai_meta=AIMeta(
-                model_used=models[0],
+                model_used=model_used,
                 routing_strategy=strategy,
-                latency_ms=130,
-                confidence_score=0.95,
-                is_simulated_fallback=True
+                latency_ms=latency,
+                confidence_score=0.98,
+                is_simulated_fallback=is_fallback
             )
         )
 
@@ -787,48 +883,87 @@ class AIOrchestrator:
         strategy, models = model_router.route_task("assistant_chat")
         msg_lower = message.lower()
 
-        if role == "student":
-            if "career" in msg_lower or "role" in msg_lower or "job" in msg_lower:
-                reply = "Based on your verified skills in React, Python, and PostgreSQL, you are exceptionally well-positioned for Full Stack Engineer and Cloud Microservices roles. I recommend bridging your Docker gap to reach 96%+ recruiter match scores!"
-                quick_sugg = ["How do I improve my resume for TCS?", "What learning labs are recommended for Docker?", "Show career salary outlook"]
-                links = [{"label": "Skills & Career", "url": "/dashboard/student/skills"}, {"label": "Resume Builder", "url": "/dashboard/student/resume"}]
-            elif "resume" in msg_lower:
-                reply = "I analyzed your ATS resume draft! Your summary can be strengthened by highlighting quantifiable metrics from your FastAPI multi-tenant project."
-                quick_sugg = ["Optimize my resume summary", "Add top hiring keywords", "Download ATS resume PDF"]
-                links = [{"label": "Resume Builder", "url": "/dashboard/student/resume"}]
-            else:
-                reply = f"Hello Aarav! I'm your SkillBridge AI Career Advisor powered by Google Gemini & Groq. I can analyze your verified skills, guide your internship applications, or optimize your ATS resume. How can I help you today?"
-                quick_sugg = ["Run Skill Gap Analysis", "Explore Top Internships", "Review My Resume"]
-                links = [{"label": "Dashboard", "url": "/dashboard/student"}]
+        # Retrieve RAG context if user is querying a skill, topic, or career guidance
+        rag_resources = rag_service.search_learning_resources(message, top_k=2)
+        rag_info = ""
+        if rag_resources:
+            rag_info = "Relevant verified SkillBridge resources:\n" + "\n".join([f"- {r['title']} ({r['provider']}): {r['content']}" for r in rag_resources])
 
-        elif role == "academician":
-            reply = "Greetings Professor. Across your 42 authorized CSE students, 84% are placement-ready. The most critical gap identified across the cohort is Docker Containerization (58% of students). Would you like me to draft an FDP collaboration proposal?"
-            quick_sugg = ["View Department Analytics", "Recommend Resources to Cohort", "Propose Industry Workshop"]
-            links = [{"label": "Student Analytics", "url": "/dashboard/academician/analytics"}, {"label": "Collaboration", "url": "/dashboard/academician/collaboration"}]
+        prompt = f"""You are the SkillBridge India AI Assistant (SIH 2026).
+Role Context: {role.upper()}
+User Query: "{message}"
+{rag_info}
 
-        elif role == "industry_hr":
-            reply = "Hello Priya. Across TCS active postings, we have evaluated 42 campus applicants with Groq LPU inference. Candidate Aarav Sharma from IIT Delhi CSE matches 96% of your Software Engineer Intern requirements with verified full stack competencies."
-            quick_sugg = ["Run AI Candidate Matching", "View Shortlisted Applicants", "Post New Role"]
-            links = [{"label": "AI Matching", "url": "/dashboard/industry/matching"}, {"label": "Applications Pipeline", "url": "/dashboard/industry/candidates"}]
+MANDATORY RULES:
+1. Answer the user's CURRENT query directly and helpfully.
+2. If the user asks about learning a topic (like English, Python, React), recommend concrete steps for that specific topic. DO NOT divert to unrelated topics.
+3. Keep response professional, encouraging, and under 120 words.
 
-        else:
-            reply = "SkillBridge AI Assistant is online (Google Gemini + Groq) and ready to assist with skill mapping, career pathways, and academic-industry collaboration."
-            quick_sugg = ["System Status", "Documentation"]
-            links = []
+Return JSON:
+{{
+  "reply": "<direct, helpful answer>",
+  "quick_suggestions": ["<suggestion 1>", "<suggestion 2>", "<suggestion 3>"],
+  "relevant_links": [{{"label": "<Label>", "url": "<URL>"}}]
+}}"""
 
-        self._log_execution(user_id, role, "assistant_chat", models[0], None, strategy, 85, True)
+        parsed: Optional[Dict[str, Any]] = None
+        latency = 85
+        is_fallback = False
+        model_used = models[0]
+
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(
+                prompt=prompt,
+                system_instruction=PromptTemplates.SYSTEM_BASE
+            )
+            model_used = models[0]
+        except Exception:
+            try:
+                parsed, latency, is_fallback = await groq_service.generate_structured_json(
+                    prompt=prompt,
+                    system_instruction=PromptTemplates.SYSTEM_BASE
+                )
+                model_used = "openai/gpt-oss-120b (Groq LPU)"
+                is_fallback = False
+            except Exception:
+                # Deterministic contextual fallback strictly based on user query
+                if any(w in msg_lower for w in ["english", "speak", "grammar", "pronunci", "communication"]):
+                    reply = "To excel in professional English communication, focus on sentence structure, active vocabulary drills, and corporate presentation techniques. We recommend starting with our English Communication & Spoken Fluency Masterclass!"
+                    quick_sugg = ["Explore English Courses", "Spoken English Practice", "Resume Review"]
+                    links = [{"label": "Learning Dashboard", "url": "/dashboard/student/learning"}]
+                elif "python" in msg_lower:
+                    reply = "For Python mastery, focus on algorithmic problem solving, async concurrency with FastAPI, and clean object-oriented architecture. Check out our Python learning track on the portal!"
+                    quick_sugg = ["Start Python Micro-Lesson", "Python Interview Practice", "View Projects"]
+                    links = [{"label": "Learning Dashboard", "url": "/dashboard/student/learning"}]
+                elif "react" in msg_lower or "frontend" in msg_lower:
+                    reply = "For frontend engineering, master React 18 component reconciliation, hooks state architecture, and responsive layouts with Flexbox and CSS Grid."
+                    quick_sugg = ["React Micro-Lessons", "Frontend Interview Simulator", "Explore Courses"]
+                    links = [{"label": "Learning Dashboard", "url": "/dashboard/student/learning"}]
+                else:
+                    reply = f"Hello! I am your SkillBridge AI Assistant. I can help guide your learning pathways, interview preparation, and career readiness for '{message}'. How would you like to proceed?"
+                    quick_sugg = ["Learning Modules", "AI Interview Simulator", "Resume Optimizer"]
+                    links = [{"label": "Dashboard", "url": "/dashboard/student"}]
+
+                parsed = {
+                    "reply": reply,
+                    "quick_suggestions": quick_sugg,
+                    "relevant_links": links
+                }
+                is_fallback = True
+
+        self._log_execution(user_id, role, "assistant_chat", model_used, None, strategy, latency, is_fallback)
 
         return AIAssistantChatResponse(
-            reply=reply,
+            reply=parsed.get("reply", "SkillBridge AI Assistant is online."),
             role_context=role,
-            quick_suggestions=quick_sugg,
-            relevant_links=links,
+            quick_suggestions=parsed.get("quick_suggestions") or ["Learning Paths", "Interview Practice"],
+            relevant_links=parsed.get("relevant_links") or [{"label": "Dashboard", "url": "/dashboard/student"}],
             ai_meta=AIMeta(
-                model_used=f"{models[0]} (Groq + Gemini)",
+                model_used=model_used,
                 routing_strategy=strategy,
-                latency_ms=85,
-                confidence_score=0.99,
-                is_simulated_fallback=True
+                latency_ms=latency,
+                confidence_score=0.98,
+                is_simulated_fallback=is_fallback
             )
         )
 
@@ -854,7 +989,19 @@ class AIOrchestrator:
         combined_skills = list(set((payload.skills or []) + student_skills))
         num_q = min(max(payload.number_of_questions or 5, 3), 15)
 
-        # Use interview_generation routing to ensure Gemini primary
+        # 1. RAG Competency Retrieval for target role and skills
+        rag_competencies = rag_service.search_interview_competencies(
+            role=payload.role,
+            skills=combined_skills,
+            interview_type=payload.interview_type,
+            top_k=3
+        )
+        logger.info(
+            f"[Interview-Pipeline] User: {user_id} | Role: '{payload.role}' | "
+            f"Mode: {payload.interview_type} | Skills: {combined_skills} | "
+            f"Retrieved RAG Competencies: {len(rag_competencies)}"
+        )
+
         strategy, models = model_router.route_task("interview_generation")
         prompt = PromptTemplates.interview_questions_generate_prompt(
             role=payload.role,
@@ -865,44 +1012,50 @@ class AIOrchestrator:
             resume_summary=resume_summary if payload.resume_personalization else None,
             job_description=payload.job_description,
             custom_instructions=payload.custom_instructions,
+            rag_competencies=rag_competencies
         )
 
-        # Build dynamic fallback questions (used only if simulation is enabled)
-        fallback_questions = self._build_dynamic_interview_fallback(
-            role=payload.role,
-            interview_type=payload.interview_type,
-            skills=combined_skills,
-            num_questions=num_q,
-            experience_level=payload.experience_level or "intermediate",
-            custom_focus=payload.interview_focus,
-        )
+        parsed_data: Optional[Dict[str, Any]] = None
+        latency = 0
+        is_fallback = False
+        model_used = models[0]
 
         try:
             # Primary Gemini call
             parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
                 prompt=prompt,
-                system_instruction=PromptTemplates.SYSTEM_BASE,
-                fallback_data={"questions": fallback_questions},
+                system_instruction=PromptTemplates.SYSTEM_BASE
             )
-        except Exception:
-            # Gemini failed – attempt genuine Groq fallback
+            model_used = models[0]
+            logger.info(f"[Interview-Pipeline] Gemini generated questions in {latency}ms")
+        except Exception as gemini_err:
+            logger.warning(f"[Interview-Pipeline] Primary Gemini failed ({gemini_err}). Invoking Groq fallback...")
             try:
                 parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
                     prompt=prompt,
-                    system_instruction=PromptTemplates.SYSTEM_BASE,
-                    fallback_data={"questions": fallback_questions},
+                    system_instruction=PromptTemplates.SYSTEM_BASE
                 )
+                model_used = "openai/gpt-oss-120b (Groq LPU)"
                 is_fallback = False
-            except Exception:
-                from fastapi import HTTPException, status
+                logger.info(f"[Interview-Pipeline] Groq fallback generated questions in {latency}ms")
+            except Exception as groq_err:
+                logger.error(f"[Interview-Pipeline] Both Gemini and Groq failed ({groq_err})")
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Interview service unavailable: both Gemini and Groq failed",
+                    detail="Interview service unavailable: both Gemini and Groq failed"
                 )
 
         raw_questions = parsed_data.get("questions", [])
         if not raw_questions or not isinstance(raw_questions, list):
-            raw_questions = fallback_questions
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Interview generation returned invalid structured response"
+            )
+
+        # 2. Relevance Guard validation
+        is_valid, rejection_reason = relevance_guard.validate_interview_questions(payload.role, raw_questions)
+        if not is_valid:
+            logger.warning(f"[Interview-Pipeline] Guard warning: {rejection_reason}")
 
         # Format questions with valid IDs and structure
         formatted_questions: List[Dict[str, Any]] = []
@@ -915,7 +1068,8 @@ class AIOrchestrator:
                 "category": q.get("category") or ("Technical Depth" if payload.interview_type == "technical" else "Behavioral & Communication"),
                 "difficulty": q.get("difficulty") or payload.experience_level or "intermediate",
                 "hint": q.get("hint") or "Structure your answer using concrete examples, rationale, and tradeoffs.",
-                "evaluation_criteria": q.get("evaluation_criteria") or ["Clarity", "Depth", "Relevance"]
+                "evaluation_criteria": q.get("evaluation_criteria") or ["Clarity", "Depth", "Relevance"],
+                "expected_key_points": q.get("expected_key_points") or q.get("evaluation_criteria") or []
             })
 
         session_id = f"inv-{uuid.uuid4().hex[:10]}"
@@ -976,68 +1130,194 @@ class AIOrchestrator:
                 "question_number": 1,
                 "question_text": "Interview Question",
                 "category": "Technical Concept",
-                "evaluation_criteria": ["Clarity", "Correctness"]
+                "evaluation_criteria": ["Clarity", "Correctness"],
+                "expected_key_points": ["Clarity", "Correctness"]
             }
 
         strategy, models = model_router.route_task("interview_generation")
-        prompt = PromptTemplates.interview_answer_evaluation_prompt(
-            role=session.get("role", "Software Engineer"),
-            question_text=target_question.get("question_text", ""),
-            category=target_question.get("category", "Domain Knowledge"),
-            answer_text=answer_text,
-            evaluation_criteria=target_question.get("evaluation_criteria", [])
+        inv_type = str(session.get("interview_type", "technical")).lower()
+        role = session.get("role", "Software Engineer")
+        expected_kps = target_question.get("expected_key_points") or target_question.get("evaluation_criteria") or []
+
+        # ---------------------------------------------------------------------
+        # 1. Deterministic Refusal / Gibberish Detection
+        # ---------------------------------------------------------------------
+        norm_answer = re.sub(r'[^\w\s]', '', (answer_text or '').strip().lower()).strip()
+        refusal_phrases = {
+            "", "i dont know", "i do not know", "dont know", "do not know", "idk",
+            "no idea", "no", "nothing", "pass", "skip", "asdf", "asdfg", "asdfasdf",
+            "qwerty", "na", "none", "dunno", "no answer", "i have no idea", "cant say",
+            "cant answer", "cannot answer"
+        }
+        words = norm_answer.split()
+        is_refusal = (
+            norm_answer in refusal_phrases
+            or len(norm_answer) <= 1
+            or (len(words) <= 6 and (
+                norm_answer.startswith("i dont know") or 
+                norm_answer.startswith("i do not know") or
+                norm_answer.startswith("idk") or
+                norm_answer.startswith("no idea") or
+                norm_answer.startswith("i have no idea")
+            ))
+            or (len(words) > 0 and all(w in ["asdf", "qwerty", "blah", "xyz", "zzz", "aaa", "test"] for w in words))
         )
 
-        # Dynamic fallback evaluation based on answer content & length
-        ans_len = len(answer_text.strip().split())
-        calculated_score = 8
-        if ans_len < 8:
-            calculated_score = 5
-        elif ans_len > 35:
-            calculated_score = 9
+        all_questions = session.get("questions", [])
+        q_idx = target_question.get("question_number", 1) - 1
+        is_final = (q_idx >= len(all_questions) - 1) or (len(interview_repo.get_answers(interview_id)) >= session.get("total_questions", len(all_questions)))
+        next_q_obj = None
+        if not is_final and (q_idx + 1) < len(all_questions):
+            next_raw = all_questions[q_idx + 1]
+            next_q_obj = InterviewQuestion(**next_raw)
 
-        fallback_eval = {
-            "score": calculated_score,
-            "strengths": [
-                "Good conceptual focus on fundamental principles",
-                "Directly addressed the core scenario with clear explanation"
-            ],
-            "improvements": [
-                "Could provide deeper concrete syntax or operational tradeoffs",
-                "Structure the answer with concise sequential points"
-            ],
-            "suggested_answer_points": [
-                "Mention real-world production performance implications",
-                "Highlight automated testing and validation strategies"
-            ]
-        }
+        if is_refusal:
+            missing_kps = list(expected_kps) if expected_kps else ["Core conceptual explanation", "Relevant technical or behavioral context"]
+            answer_record = {
+                "question_id": question_id,
+                "question_number": target_question.get("question_number", 1),
+                "question_text": target_question.get("question_text", ""),
+                "category": target_question.get("category", "General"),
+                "answer_text": answer_text,
+                "score": 0,
+                "technical_correctness": 0,
+                "relevance": 0,
+                "completeness": 0,
+                "communication": 0,
+                "professionalism": 0 if inv_type == "hr" else None,
+                "assessment": "No substantive answer or refusal provided",
+                "covered_key_points": [],
+                "missing_key_points": missing_kps,
+                "strengths": [],
+                "improvements": ["Provide a substantive answer addressing the core concepts of the question"],
+                "suggested_answer_points": missing_kps,
+                "evaluated_at": datetime.now(timezone.utc).isoformat()
+            }
+            interview_repo.save_answer(interview_id, answer_record)
+            self._log_execution(user_id, "student", "interview_answer_evaluate_refusal", models[0], None, strategy, 10, False)
 
-        # Multi-model fallback: Gemini -> Groq -> fallback_eval
+            return AnswerEvaluationResponse(
+                question_id=question_id,
+                score=0,
+                technical_correctness=0,
+                relevance=0,
+                completeness=0,
+                communication=0,
+                professionalism=0 if inv_type == "hr" else None,
+                assessment="No substantive answer or refusal provided",
+                covered_key_points=[],
+                missing_key_points=missing_kps,
+                strengths=[],
+                improvements=["Provide a substantive answer addressing the core concepts of the question"],
+                suggested_answer_points=missing_kps,
+                next_question=next_q_obj,
+                is_final_question=is_final,
+                ai_meta=AIMeta(
+                    model_used=f"{models[0]} (Groq + Gemini Multi-Model)",
+                    routing_strategy=strategy,
+                    latency_ms=10,
+                    confidence_score=1.0,
+                    is_simulated_fallback=False
+                )
+            )
+
+        # ---------------------------------------------------------------------
+        # 2. Build Evaluation Prompt
+        # ---------------------------------------------------------------------
+        prompt = PromptTemplates.interview_answer_evaluation_prompt(
+            role=role,
+            question_text=target_question.get("question_text", ""),
+            category=target_question.get("category", "General"),
+            answer_text=answer_text,
+            evaluation_criteria=target_question.get("evaluation_criteria", []),
+            expected_key_points=expected_kps,
+            interview_type=inv_type
+        )
+
+        # ---------------------------------------------------------------------
+        # 3. Multi-Model Fallback: Gemini -> Groq -> HTTP 503 (No fake evaluation)
+        # ---------------------------------------------------------------------
         parsed_data = None
         latency = 200
         is_fallback = False
+
         try:
             parsed_data, latency, is_fallback = await gemini_service.generate_structured_json(
                 prompt=prompt,
                 system_instruction=PromptTemplates.SYSTEM_BASE,
-                fallback_data=fallback_eval
+                fallback_data=None
             )
+            if not parsed_data or not isinstance(parsed_data, dict):
+                raise ValueError("Gemini returned invalid or empty evaluation payload")
         except Exception:
+            # Gemini failed – attempt genuine Groq fallback
             try:
                 parsed_data, latency, is_fallback = await groq_service.generate_structured_json(
                     prompt=prompt,
                     system_instruction=PromptTemplates.SYSTEM_BASE,
-                    fallback_data=fallback_eval
+                    fallback_data=None
                 )
+                if not parsed_data or not isinstance(parsed_data, dict):
+                    raise ValueError("Groq returned invalid or empty evaluation payload")
                 is_fallback = False
             except Exception:
-                parsed_data = fallback_eval
-                is_fallback = True
+                from fastapi import HTTPException, status
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Interview evaluation service unavailable: both Gemini and Groq failed",
+                )
 
-        score = max(0, min(10, int(parsed_data.get("score", calculated_score))))
-        strengths = parsed_data.get("strengths") or fallback_eval["strengths"]
-        improvements = parsed_data.get("improvements") or fallback_eval["improvements"]
-        suggested_points = parsed_data.get("suggested_answer_points") or fallback_eval["suggested_answer_points"]
+        # ---------------------------------------------------------------------
+        # 4. Deterministic Dimension Scoring & Clamping
+        # ---------------------------------------------------------------------
+        if inv_type == "hr":
+            relevance = max(0, min(40, int(parsed_data.get("relevance", 0))))
+            communication = max(0, min(25, int(parsed_data.get("communication", 0))))
+            completeness = max(0, min(20, int(parsed_data.get("completeness", 0))))
+            professionalism = max(0, min(15, int(parsed_data.get("professionalism", 0))))
+            technical_correctness = 0
+            raw_score = relevance + communication + completeness + professionalism
+        else:
+            technical_correctness = max(0, min(40, int(parsed_data.get("technical_correctness", 0))))
+            relevance = max(0, min(25, int(parsed_data.get("relevance", 0))))
+            completeness = max(0, min(20, int(parsed_data.get("completeness", 0))))
+            communication = max(0, min(15, int(parsed_data.get("communication", 0))))
+            professionalism = None
+            raw_score = technical_correctness + relevance + completeness + communication
+
+        # ---------------------------------------------------------------------
+        # 5. Off-Topic & Fundamentally Incorrect Caps (Maximum Bounds)
+        # ---------------------------------------------------------------------
+        assessment_str = str(parsed_data.get("assessment", "Evaluation complete"))
+        assessment_lower = assessment_str.lower()
+
+        is_off_topic = bool(parsed_data.get("is_off_topic"))
+        if "off-topic" in assessment_lower or "off topic" in assessment_lower or "irrelevant" in assessment_lower:
+            is_off_topic = True
+
+        is_fundamentally_incorrect = bool(parsed_data.get("is_fundamentally_incorrect"))
+        if "fundamentally incorrect" in assessment_lower or "major misconception" in assessment_lower:
+            is_fundamentally_incorrect = True
+
+        if is_off_topic:
+            final_score = min(raw_score, 20)
+            if inv_type != "hr":
+                technical_correctness = min(technical_correctness, 5)
+                relevance = min(relevance, 5)
+            else:
+                relevance = min(relevance, 8)
+        elif is_fundamentally_incorrect:
+            final_score = min(raw_score, 35)
+            if inv_type != "hr":
+                technical_correctness = min(technical_correctness, 10)
+        else:
+            final_score = max(0, min(100, raw_score))
+
+        covered_kps = parsed_data.get("covered_key_points") or []
+        missing_kps = parsed_data.get("missing_key_points") or []
+        strengths = parsed_data.get("strengths") or []
+        improvements = parsed_data.get("improvements") or []
+        suggested_points = parsed_data.get("suggested_answer_points") or []
 
         answer_record = {
             "question_id": question_id,
@@ -1045,28 +1325,35 @@ class AIOrchestrator:
             "question_text": target_question.get("question_text", ""),
             "category": target_question.get("category", "General"),
             "answer_text": answer_text,
-            "score": score,
+            "score": final_score,
+            "technical_correctness": technical_correctness,
+            "relevance": relevance,
+            "completeness": completeness,
+            "communication": communication,
+            "professionalism": professionalism,
+            "assessment": assessment_str,
+            "covered_key_points": covered_kps,
+            "missing_key_points": missing_kps,
             "strengths": strengths,
             "improvements": improvements,
+            "suggested_answer_points": suggested_points,
             "evaluated_at": datetime.now(timezone.utc).isoformat()
         }
 
         interview_repo.save_answer(interview_id, answer_record)
         self._log_execution(user_id, "student", "interview_answer_evaluate", models[0], None, strategy, latency, is_fallback)
 
-        # Check question progression
-        all_questions = session.get("questions", [])
-        q_idx = target_question.get("question_number", 1) - 1
-        is_final = (q_idx >= len(all_questions) - 1) or (len(interview_repo.get_answers(interview_id)) >= session.get("total_questions", len(all_questions)))
-
-        next_q_obj = None
-        if not is_final and (q_idx + 1) < len(all_questions):
-            next_raw = all_questions[q_idx + 1]
-            next_q_obj = InterviewQuestion(**next_raw)
-
         return AnswerEvaluationResponse(
             question_id=question_id,
-            score=score,
+            score=final_score,
+            technical_correctness=technical_correctness,
+            relevance=relevance,
+            completeness=completeness,
+            communication=communication,
+            professionalism=professionalism,
+            assessment=assessment_str,
+            covered_key_points=covered_kps,
+            missing_key_points=missing_kps,
             strengths=strengths,
             improvements=improvements,
             suggested_answer_points=suggested_points,
@@ -1103,8 +1390,8 @@ class AIOrchestrator:
         exp_level = session.get("experience_level", "intermediate")
 
         last_ans = answers[-1] if answers else {}
-        last_score = last_ans.get("score", 7)
-        fallback_difficulty = "advanced" if last_score >= 8 else ("beginner" if last_score <= 5 else "intermediate")
+        last_score = last_ans.get("score", 70)
+        fallback_difficulty = "advanced" if last_score >= 80 else ("beginner" if last_score <= 50 else "intermediate")
 
         fallback_q = {
             "id": f"q-{next_q_num}",
@@ -1113,7 +1400,8 @@ class AIOrchestrator:
             "category": "System Reliability & Resilience",
             "difficulty": fallback_difficulty,
             "hint": "Discuss distributed tracing, circuit breakers, timeout policies, and metrics.",
-            "evaluation_criteria": ["Cascading failure mitigation", "Circuit breaker pattern", "Observability metrics"]
+            "evaluation_criteria": ["Cascading failure mitigation", "Circuit breaker pattern", "Observability metrics"],
+            "expected_key_points": ["Cascading failure mitigation", "Circuit breaker pattern", "Observability metrics"]
         }
 
         prompt = PromptTemplates.interview_adaptive_next_question_prompt(
@@ -1148,7 +1436,8 @@ class AIOrchestrator:
             "category": parsed_data.get("category") or fallback_q["category"],
             "difficulty": parsed_data.get("difficulty") or fallback_difficulty,
             "hint": parsed_data.get("hint") or fallback_q["hint"],
-            "evaluation_criteria": parsed_data.get("evaluation_criteria") or fallback_q["evaluation_criteria"]
+            "evaluation_criteria": parsed_data.get("evaluation_criteria") or fallback_q["evaluation_criteria"],
+            "expected_key_points": parsed_data.get("expected_key_points") or fallback_q.get("expected_key_points", [])
         }
 
         # Update session question list
@@ -1169,12 +1458,12 @@ class AIOrchestrator:
         role = session.get("role", "Software Engineer")
         inv_type = session.get("interview_type", "technical")
 
-        # Compute empirical scores from answered questions
+        # Section 11: Compute overall_score as the deterministic integer average of all question scores
         if answers:
-            avg_score_10 = sum(a.get("score", 7) for a in answers) / len(answers)
-            overall_pct = int(avg_score_10 * 10)
+            overall_pct = int(round(sum(a.get("score", 70) for a in answers) / len(answers)))
+            overall_pct = max(0, min(100, overall_pct))
         else:
-            overall_pct = 75
+            overall_pct = 70
 
         strategy, models = model_router.route_task("candidate_analysis")
         prompt = PromptTemplates.interview_final_report_prompt(
@@ -1185,7 +1474,9 @@ class AIOrchestrator:
                 "answer": a.get("answer_text"),
                 "score": a.get("score"),
                 "strengths": a.get("strengths"),
-                "improvements": a.get("improvements")
+                "improvements": a.get("improvements"),
+                "covered_key_points": a.get("covered_key_points", []),
+                "missing_key_points": a.get("missing_key_points", [])
             } for a in answers]
         )
 
@@ -1198,13 +1489,13 @@ class AIOrchestrator:
                 {"category": "Role Relevance", "score": overall_pct}
             ],
             "strengths": [
-                f"Strong demonstrated foundation in {role} architectural principles",
+                f"Demonstrated foundation in {role} concepts",
                 "Clear reasoning when articulating tradeoffs and implementation decisions",
-                "Good composure and professional problem-solving methodology"
+                "Composed and structured problem-solving approach"
             ],
             "weaknesses": [
                 "Could offer more depth regarding edge cases and scalability constraints",
-                "Structural organization of responses could follow the STAR framework more tightly"
+                "Structural organization of responses could cover more missing key points"
             ],
             "questions_answered_well": [
                 answers[0].get("question_text", "Core Architecture") if answers else "Core Concepts"
@@ -1249,8 +1540,8 @@ class AIOrchestrator:
                 parsed_data = fallback_report
                 is_fallback = True
 
-        # Merge results safely
-        overall = max(0, min(100, int(parsed_data.get("overall_score", overall_pct))))
+        # Section 11: Final overall score is strictly the deterministic average
+        overall = overall_pct
         cat_scores = parsed_data.get("category_scores") or fallback_report["category_scores"]
         strengths = parsed_data.get("strengths") or fallback_report["strengths"]
         weaknesses = parsed_data.get("weaknesses") or fallback_report["weaknesses"]
@@ -1260,14 +1551,16 @@ class AIOrchestrator:
         skills_prac = parsed_data.get("suggested_skills_to_practice") or fallback_report["suggested_skills_to_practice"]
         next_steps = parsed_data.get("recommended_next_steps") or fallback_report["recommended_next_steps"]
 
-        # Build QuestionReviewItems from answers
+        # Build QuestionReviewItems from answers (preserving 0-100 score and key points)
         q_reviews = [
             QuestionReviewItem(
                 question_number=a.get("question_number", idx + 1),
-                question_text=a.get("question_text", ""),
+                question_text=a.get("question_text", f"Question {idx+1}"),
                 category=a.get("category", "General"),
                 answer_text=a.get("answer_text", ""),
-                score=a.get("score", 8),
+                score=a.get("score", 70),
+                covered_key_points=a.get("covered_key_points", []),
+                missing_key_points=a.get("missing_key_points", []),
                 strengths=a.get("strengths", []),
                 improvements=a.get("improvements", [])
             )

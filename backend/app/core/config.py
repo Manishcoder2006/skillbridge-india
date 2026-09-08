@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     AI_DEFAULT_MODEL: str = "gemini-1.5-flash"
-    GROQ_DEFAULT_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_DEFAULT_MODEL: str = "openai/gpt-oss-120b"
     AI_TIMEOUT_SECONDS: int = 15
     AI_SIMULATION_FALLBACK: bool = False
     # Maximum number of interview questions per session. Adjustable via environment variable for flexibility.

@@ -295,7 +295,40 @@ export const LearningContent = () => {
                       {item.resource_type}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '0.15rem 0.5rem',
+                        borderRadius: '9999px',
+                        background:
+                          item.visibility === 'department'
+                            ? '#eff6ff'
+                            : item.visibility === 'institution'
+                            ? '#fdf4ff'
+                            : '#f0fdf4',
+                        color:
+                          item.visibility === 'department'
+                            ? '#1d4ed8'
+                            : item.visibility === 'institution'
+                            ? '#86198f'
+                            : '#15803d',
+                        border: `1px solid ${
+                          item.visibility === 'department'
+                            ? '#bfdbfe'
+                            : item.visibility === 'institution'
+                            ? '#f5d0fe'
+                            : '#bbf7d0'
+                        }`,
+                      }}
+                    >
+                      {item.visibility === 'department'
+                        ? 'My Department Only'
+                        : item.visibility === 'institution'
+                        ? 'My Institution'
+                        : 'All Students'}
+                    </span>
                     <Badge variant={item.is_published ? 'success' : 'warning'}>
                       {item.is_published ? 'Published' : 'Draft'}
                     </Badge>
@@ -604,6 +637,34 @@ export const LearningContent = () => {
                   required
                   style={{ minHeight: '42px' }}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                  Who can access this content? <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  className="form-control"
+                  value={formData.visibility}
+                  onChange={(e) => setFormData({ ...formData, visibility: e.target.value })}
+                  required
+                  style={{ minHeight: '42px', fontWeight: 500 }}
+                >
+                  <option value="department">
+                    My Department Only — only students belonging to the faculty's institution and department.
+                  </option>
+                  <option value="institution">
+                    My Institution — all students belonging to the faculty's institution, regardless of department.
+                  </option>
+                  <option value="global">
+                    All Students — students across the platform.
+                  </option>
+                </select>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
+                  {formData.visibility === 'department' && "🔒 Only students belonging to your institution and department will see this content."}
+                  {formData.visibility === 'institution' && "🏛️ All students enrolled in your institution (any department) will see this content."}
+                  {formData.visibility === 'global' && "🌐 Open to all students across the platform."}
+                </span>
               </div>
 
               <div className="form-group">

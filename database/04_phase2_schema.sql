@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS public.assessment_attempts (
 -- 5. Learning Resources
 CREATE TABLE IF NOT EXISTS public.learning_resources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES public.institutions(id) ON DELETE SET NULL,
+    department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
+    academician_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     category VARCHAR(100) NOT NULL,
     skill_tag VARCHAR(100) NOT NULL,
@@ -69,7 +72,9 @@ CREATE TABLE IF NOT EXISTS public.learning_resources (
     provider VARCHAR(150) NOT NULL DEFAULT 'SkillBridge Learning',
     duration VARCHAR(50) NOT NULL DEFAULT '2 hours',
     url TEXT NOT NULL,
+    description TEXT,
     level VARCHAR(30) NOT NULL DEFAULT 'intermediate',
+    visibility VARCHAR(30) NOT NULL DEFAULT 'global', -- 'department', 'institution', 'global'
     is_free BOOLEAN NOT NULL DEFAULT true,
     rating NUMERIC(3,2) DEFAULT 4.8,
     is_active BOOLEAN NOT NULL DEFAULT true,

@@ -25,7 +25,13 @@ INTERVIEW_SESSIONS_STORE: Dict[str, Dict[str, Any]] = {
                 "category": "Databases & Storage",
                 "difficulty": "intermediate",
                 "hint": "Consider the internal node balance and index maintenance overhead during INSERT/UPDATE operations.",
-                "evaluation_criteria": ["B-tree balance", "Write amplification", "Index maintenance cost"]
+                "evaluation_criteria": ["B-tree balance", "Write amplification", "Index maintenance cost"],
+                "expected_key_points": [
+                    "B-tree indexes maintain sorted balanced tree structures allowing O(log N) lookups",
+                    "Hash indexes only support equality comparisons using hash buckets",
+                    "Every INSERT/UPDATE requires maintaining all index trees on the table",
+                    "High index count creates write amplification and page split overhead"
+                ]
             },
             {
                 "id": "q-demo-2",
@@ -34,7 +40,13 @@ INTERVIEW_SESSIONS_STORE: Dict[str, Dict[str, Any]] = {
                 "category": "Backend Frameworks",
                 "difficulty": "intermediate",
                 "hint": "Discuss event loop, cooperative multitasking, and non-blocking I/O.",
-                "evaluation_criteria": ["Event loop understanding", "ASGI vs WSGI", "Async I/O non-blocking behavior"]
+                "evaluation_criteria": ["Event loop understanding", "ASGI vs WSGI", "Async I/O non-blocking behavior"],
+                "expected_key_points": [
+                    "FastAPI runs on ASGI servers using an asynchronous single-threaded event loop",
+                    "async/await yields execution back to the event loop during network or database I/O",
+                    "ASGI handles concurrent requests without dedicating an OS thread per connection",
+                    "Contrasts with WSGI thread pools that block worker threads during I/O wait"
+                ]
             }
         ],
         "created_at": "2026-08-28T14:30:00Z"
@@ -49,7 +61,20 @@ INTERVIEW_ANSWERS_STORE: Dict[str, List[Dict[str, Any]]] = {
             "question_text": "How do database indexes work in PostgreSQL (B-tree vs Hash), and when would an index degrade write throughput?",
             "category": "Databases & Storage",
             "answer_text": "B-tree indexes maintain a balanced search tree allowing O(log N) lookups. However, each INSERT or UPDATE requires updating all indexes on the table, increasing I/O write amplification.",
-            "score": 9,
+            "score": 90,
+            "technical_correctness": 36,
+            "relevance": 24,
+            "completeness": 17,
+            "communication": 13,
+            "assessment": "Strong and technically accurate answer",
+            "covered_key_points": [
+                "B-tree index structure and O(log N) lookup complexity",
+                "Index maintenance and write amplification cost on writes"
+            ],
+            "missing_key_points": [
+                "Hash index equality-only constraint",
+                "Page splits during high-volume sequential writes"
+            ],
             "strengths": ["Clear explanation of B-tree time complexity", "Correctly identified index maintenance and write amplification cost"],
             "improvements": ["Could mention write buffers or composite index ordering strategies"],
             "evaluated_at": "2026-08-28T14:35:00Z"
@@ -60,7 +85,19 @@ INTERVIEW_ANSWERS_STORE: Dict[str, List[Dict[str, Any]]] = {
             "question_text": "Explain how FastAPI leverages ASGI and Python async/await syntax to achieve high-concurrency I/O performance.",
             "category": "Backend Frameworks",
             "answer_text": "FastAPI runs on ASGI servers like Uvicorn using an asynchronous event loop. When waiting for DB or network I/O, the worker yields control back to the event loop to process other requests.",
-            "score": 9,
+            "score": 90,
+            "technical_correctness": 37,
+            "relevance": 24,
+            "completeness": 16,
+            "communication": 13,
+            "assessment": "Strong and accurate explanation of async I/O",
+            "covered_key_points": [
+                "ASGI event loop non-blocking behavior",
+                "Worker yielding during I/O wait"
+            ],
+            "missing_key_points": [
+                "Contrast with WSGI thread pool exhaustion"
+            ],
             "strengths": ["Accurate explanation of non-blocking I/O event loop yielding", "Understood ASGI worker multiplexing"],
             "improvements": ["Could contrast with traditional multi-threaded WSGI blocking models"],
             "evaluated_at": "2026-08-28T14:38:00Z"
@@ -73,11 +110,11 @@ INTERVIEW_REPORTS_STORE: Dict[str, Dict[str, Any]] = {
         "interview_id": "inv-demo-001",
         "role": "Backend Developer",
         "interview_type": "technical",
-        "overall_score": 88,
+        "overall_score": 90,
         "category_scores": [
             {"category": "Technical Depth", "score": 90},
-            {"category": "Communication", "score": 85},
-            {"category": "Problem Solving", "score": 88},
+            {"category": "Communication", "score": 88},
+            {"category": "Problem Solving", "score": 90},
             {"category": "Role Relevance", "score": 92}
         ],
         "strengths": [
@@ -115,7 +152,15 @@ INTERVIEW_REPORTS_STORE: Dict[str, Dict[str, Any]] = {
                 "question_text": "How do database indexes work in PostgreSQL (B-tree vs Hash), and when would an index degrade write throughput?",
                 "category": "Databases & Storage",
                 "answer_text": "B-tree indexes maintain a balanced search tree allowing O(log N) lookups. However, each INSERT or UPDATE requires updating all indexes on the table, increasing I/O write amplification.",
-                "score": 9,
+                "score": 90,
+                "covered_key_points": [
+                    "B-tree index structure and O(log N) lookup complexity",
+                    "Index maintenance and write amplification cost on writes"
+                ],
+                "missing_key_points": [
+                    "Hash index equality-only constraint",
+                    "Page splits during high-volume sequential writes"
+                ],
                 "strengths": ["Clear explanation of B-tree time complexity", "Identified index maintenance cost"],
                 "improvements": ["Could mention write buffers"]
             },
@@ -124,7 +169,14 @@ INTERVIEW_REPORTS_STORE: Dict[str, Dict[str, Any]] = {
                 "question_text": "Explain how FastAPI leverages ASGI and Python async/await syntax to achieve high-concurrency I/O performance.",
                 "category": "Backend Frameworks",
                 "answer_text": "FastAPI runs on ASGI servers like Uvicorn using an asynchronous event loop. When waiting for DB or network I/O, the worker yields control back to the event loop to process other requests.",
-                "score": 9,
+                "score": 90,
+                "covered_key_points": [
+                    "ASGI event loop non-blocking behavior",
+                    "Worker yielding during I/O wait"
+                ],
+                "missing_key_points": [
+                    "Contrast with WSGI thread pool exhaustion"
+                ],
                 "strengths": ["Accurate explanation of non-blocking I/O event loop yielding"],
                 "improvements": ["Could contrast with WSGI thread pools"]
             }

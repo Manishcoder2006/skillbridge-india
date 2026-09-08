@@ -476,6 +476,12 @@ class AcademicianRepository:
         department_id: str,
         data: Dict[str, Any]
     ) -> Dict[str, Any]:
+        vis = str(data.get("visibility", "department")).lower().strip()
+        if vis in ["public", "all", "all students"]:
+            vis = "global"
+        if vis not in ["department", "institution", "global"]:
+            vis = "department"
+
         item = {
             "id": f"c{uuid.uuid4().hex[:31]}",
             "academician_id": academician_id,
@@ -486,10 +492,16 @@ class AcademicianRepository:
             "category": data.get("category", "Backend Engineering"),
             "skill_tag": data.get("skill_tag", "FastAPI"),
             "resource_type": data.get("resource_type", "tutorial"),
+            "provider": academician_name or "Faculty Curator",
+            "duration": data.get("duration", "2 hours"),
             "url": data["url"],
             "description": data.get("description", ""),
-            "visibility": data.get("visibility", "department"),
+            "level": data.get("level", "intermediate"),
+            "visibility": vis,
             "is_published": data.get("is_published", True),
+            "is_active": data.get("is_published", True),
+            "is_free": True,
+            "rating": 4.8,
             "created_at": datetime.utcnow().isoformat() + "Z"
         }
         PHASE3_DATA_STORE["faculty_content"].insert(0, item)
@@ -501,11 +513,20 @@ class AcademicianRepository:
         academician_id: str,
         update_data: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
+        if "visibility" in update_data and update_data["visibility"] is not None:
+            vis = str(update_data["visibility"]).lower().strip()
+            if vis in ["public", "all", "all students"]:
+                vis = "global"
+            if vis in ["department", "institution", "global"]:
+                update_data["visibility"] = vis
+
         for c in PHASE3_DATA_STORE["faculty_content"]:
             if c["id"] == content_id and c["academician_id"] == academician_id:
                 for k, v in update_data.items():
                     if v is not None:
                         c[k] = v
+                if "is_published" in update_data:
+                    c["is_active"] = update_data["is_published"]
                 return c
         return None
 
