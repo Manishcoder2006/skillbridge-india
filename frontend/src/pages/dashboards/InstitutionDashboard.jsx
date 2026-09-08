@@ -1556,7 +1556,7 @@ export const InstitutionDashboard = () => {
                   Multi-Tenant Institutional Security & Compliance
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
-                  Architecture adherence report for Smart India Hackathon 2026 (PS 26044).
+                  Architecture adherence and institutional compliance report.
                 </p>
               </div>
             </div>

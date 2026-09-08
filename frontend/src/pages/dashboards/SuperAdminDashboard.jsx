@@ -137,7 +137,7 @@ export const SuperAdminDashboard = () => {
               GLOBAL SCOPE
             </span>
           </div>
-          <p className="page-subtitle">Multi-Tenant Governance, Macro Skill Mapping & System Telemetry (SIH 2026)</p>
+          <p className="page-subtitle">Multi-Tenant Governance, Macro Skill Mapping & System Telemetry</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" icon={RefreshCw} onClick={loadData} disabled={loading}>
@@ -633,7 +633,7 @@ export const SuperAdminDashboard = () => {
 
       {/* TAB 7: NATIONAL SKILL MAPPING */}
       {activeTab === 'skills' && (
-        <Card title="National AI Skill Mapping & Demand Benchmarks (SIH PS 26044)">
+        <Card title="National AI Skill Mapping & Demand Benchmarks">
           <div className="space-y-4">
             <p className="text-xs text-slate-500">
               Aggregated macroeconomic alignment metrics between Indian engineering student competencies and corporate hiring benchmarks.

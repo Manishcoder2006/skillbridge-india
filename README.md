@@ -1,6 +1,5 @@
 # SkillBridge India 🇮🇳
 ### *National Portal for Academia–Industry Collaboration for Skill Mapping, Internships & Placements*
-**Smart India Hackathon (SIH 2026) — Problem Statement ID: 26044**
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React 18](https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat&logo=react&logoColor=black)](https://reactjs.org/)
@@ -204,8 +203,8 @@ skillbridge-india/
 
 ## 👥 Authors & Acknowledgments
 
-- **Team SkillBridge India** — Smart India Hackathon (SIH 2026)
-- Developed under Problem Statement **PS 26044**: *Portal for Academia–Industry Collaboration for Skill Mapping, Internships and Placement*.
+- **Team SkillBridge India**
+- Portal for Academia–Industry Collaboration for Skill Mapping, Internships and Placement.
 
 ---
 

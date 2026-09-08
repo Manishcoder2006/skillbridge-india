@@ -20,7 +20,7 @@ class PromptTemplates:
     """Standardized prompts for SkillBridge India AI Agents."""
 
     SYSTEM_BASE = (
-        "You are the SkillBridge India AI Engine (SIH 2026 PS 26044). "
+        "You are the SkillBridge India AI Engine. "
         "Your mission is to bridge academia and industry by mapping skills, guiding students, "
         "assisting faculty, and empowering corporate recruiters. "
         "Always respond in valid, parseable JSON strictly conforming to the requested schema. "
@@ -244,7 +244,7 @@ Generate a JSON object with:
             for r in rag_resources
         ]) if rag_resources else "None retrieved"
 
-        return f"""You are the SkillBridge India Elite AI Pedagogical & Learning Architect (SIH 2026).
+        return f"""You are the SkillBridge India Elite AI Pedagogical & Learning Architect.
 The student has submitted the following learning query / focus topic:
 "{topic_or_query}"
 
@@ -300,7 +300,7 @@ Respond in strict JSON with the following structure:
             rag_lines = "\n".join([f"- [{c.get('category')}]: {c.get('content')}" for c in rag_competencies])
             rag_ctx = f"\nRetrieved RAG Competency Context for {role}:\n{rag_lines}\n"
 
-        return f"""You are the SkillBridge India Elite AI Interviewer (SIH 2026).
+        return f"""You are the SkillBridge India Elite AI Interviewer.
 Generate exactly {num_questions} realistic, highly tailored, diverse interview questions for:
 Target Role: {role}
 Interview Mode: {interview_type.upper()} (Technical, HR, or Custom)
@@ -390,7 +390,7 @@ NOTE FOR TECHNICAL:
 - If a candidate writes a long paragraph about Python projects when asked about process vs thread, it is OFF-TOPIC.
 - Short answers that completely and accurately answer the question (e.g. 'Hypertext Transfer Protocol' for HTTP) MUST receive high scores (85-100). Do NOT penalize brevity when accurate."""
 
-        return f"""You are the SkillBridge India Senior Evaluator (SIH 2026).
+        return f"""You are the SkillBridge India Senior Evaluator.
 Evaluate the candidate's answer strictly, objectively, and content-aware.
 
 Target Role: {role}

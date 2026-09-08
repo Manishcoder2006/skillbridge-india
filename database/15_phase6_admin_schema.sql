@@ -1,5 +1,5 @@
 -- ============================================================================
--- SKILLBRIDGE INDIA — SIH 2026 PS 26044
+-- SKILLBRIDGE INDIA
 -- Phase 6 Database Schema: Super Admin & National Platform Governance
 -- ============================================================================
 

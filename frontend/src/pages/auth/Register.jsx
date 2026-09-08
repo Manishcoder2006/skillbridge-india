@@ -204,7 +204,7 @@ export const Register = () => {
         >
           {/* Top Logo & Platform Identifier */}
           <div>
-            <Logo size="md" theme="light" subtitle="SIH 2026 PS 26044" />
+            <Logo size="md" theme="light" subtitle="Academia–Industry Collaboration Portal" />
 
             {/* Headline Section */}
             <div style={{ marginTop: '2rem' }}>

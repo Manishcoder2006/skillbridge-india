@@ -1,6 +1,5 @@
 -- ==============================================================================
 -- SkillBridge India - Database Schema (Phase 1 Foundation)
--- Problem Statement: 26044 (SIH 2026)
 -- Multi-Tenant Institution Architecture with Strict Role-Based Access Control
 -- ==============================================================================
 

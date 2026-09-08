@@ -17,7 +17,7 @@ export const Footer = () => {
       }}
     >
       <div>
-        <strong>SkillBridge India</strong> &mdash; SIH 2026 Problem Statement 26044 (Phase 1 Foundation)
+        <strong>SkillBridge India</strong>
       </div>
       <div>
         <span>Portal for Academia–Industry Collaboration &bull; Secure Multi-Tenant Architecture</span>

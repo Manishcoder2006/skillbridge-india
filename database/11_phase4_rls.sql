@@ -1,6 +1,6 @@
 -- ============================================================================
--- SKILLBRIDGE INDIA — SIH 2026 PS 26044
--- Phase 4 Row Level Security (RLS) Policies: Industry / HR
+-- SKILLBRIDGE INDIA
+-- Phase 4 Row Level Security (RLS) & RBAC: Industry / HR Ecosystem
 -- ============================================================================
 
 -- Enable RLS on all Phase 4 tables

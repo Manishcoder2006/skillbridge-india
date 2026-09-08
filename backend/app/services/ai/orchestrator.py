@@ -889,7 +889,7 @@ class AIOrchestrator:
         if rag_resources:
             rag_info = "Relevant verified SkillBridge resources:\n" + "\n".join([f"- {r['title']} ({r['provider']}): {r['content']}" for r in rag_resources])
 
-        prompt = f"""You are the SkillBridge India AI Assistant (SIH 2026).
+        prompt = f"""You are the SkillBridge India AI Assistant.
 Role Context: {role.upper()}
 User Query: "{message}"
 {rag_info}

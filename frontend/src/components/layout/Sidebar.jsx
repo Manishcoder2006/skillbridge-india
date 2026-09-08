@@ -141,15 +141,6 @@ export const Sidebar = ({ isMobileOpen, closeMobileMenu }) => {
 
       {/* Sidebar Footer */}
       <div className="sidebar-footer">
-        <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
-            SIH 2026 Foundation
-          </div>
-          <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '2px' }}>
-            Problem Statement 26044
-          </div>
-        </div>
-
         <button
           onClick={logout}
           className="nav-item"

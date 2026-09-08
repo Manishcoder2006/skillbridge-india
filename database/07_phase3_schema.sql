@@ -1,6 +1,5 @@
 -- ==============================================================================
 -- SkillBridge India - Phase 3 Schema: Academician / Faculty Ecosystem
--- Problem Statement: 26044 (SIH 2026)
 -- Normalized tables for Faculty Content, Opportunity Recommendations,
 -- Industry Collaboration Initiatives, and Notifications.
 -- ==============================================================================

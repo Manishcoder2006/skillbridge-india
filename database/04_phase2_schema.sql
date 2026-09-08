@@ -1,6 +1,5 @@
 -- ==============================================================================
 -- SkillBridge India - Phase 2 Schema: Student Ecosystem
--- Problem Statement: 26044 (SIH 2026)
 -- Normalized tables for Student Skills, Assessments, Learning, Opportunities,
 -- Applications, and Resume Builder.
 -- ==============================================================================

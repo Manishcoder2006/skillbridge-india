@@ -247,7 +247,7 @@ class MicroTutorService:
             f"RAG Chunks: {len(rag_resources)}"
         )
 
-        prompt = f"""You are the SkillBridge India Elite AI Micro-Learning Tutor (SIH 2026).
+        prompt = f"""You are the SkillBridge India Elite AI Micro-Learning Tutor.
 Generate a structured micro-learning path for the topic: "{topic}".
 Target Audience Difficulty: {difficulty.upper()}
 Learning Goal: {goal.upper()}

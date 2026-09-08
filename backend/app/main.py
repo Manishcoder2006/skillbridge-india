@@ -13,7 +13,7 @@ logger = setup_logger("skillbridge.main")
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version="1.0.0 (Phase 1 Foundation)",
-    description="Portal for Academia–Industry Collaboration for Skill Mapping, Internships and Placement (SIH 2026 Problem Statement 26044)",
+    description="Portal for Academia–Industry Collaboration for Skill Mapping, Internships and Placement",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -68,7 +68,7 @@ async def root_health_check():
 @app.get("/", tags=["Root"])
 async def root():
     return {
-        "message": "Welcome to SkillBridge India API (SIH 2026 PS 26044)",
+        "message": "Welcome to SkillBridge India API",
         "status": "online",
         "version": "1.0.0",
         "docs": "/docs",

@@ -833,7 +833,6 @@ export const LandingPage = () => {
             <Link to="/register" style={{ color: '#cbd5e1', textDecoration: 'none' }}>
               Register
             </Link>
-            <span style={{ color: '#64748b' }}>SIH 2026 Problem Statement 26044</span>
           </div>
         </div>
 

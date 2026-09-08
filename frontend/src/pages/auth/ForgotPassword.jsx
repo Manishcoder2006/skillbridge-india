@@ -322,7 +322,7 @@ export const ForgotPassword = () => {
           </div>
 
           <div style={{ textAlign: 'center', marginTop: '1.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-            © 2026 SkillBridge India • SIH 2026 Problem Statement 26044
+            © 2026 SkillBridge India
           </div>
         </div>
       </div>

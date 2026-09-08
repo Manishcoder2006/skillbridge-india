@@ -1,4 +1,4 @@
-# Implementation Plan - Phase 1 Foundation: SkillBridge India (SIH 2026 Problem Statement 26044)
+# Implementation Plan - Phase 1 Foundation: SkillBridge India
 
 Phase 1 establishes the enterprise-grade foundation for the **"Portal for Academia–Industry Collaboration for Skill Mapping, Internships and Placement"** (SkillBridge India). This phase strictly focuses on architectural foundation, database schema with multi-tenant institution isolation and Row Level Security (RLS), authentication flows, user roles, FastAPI backend structure, and React frontend with role-based routing and a responsive shell.
 
@@ -23,7 +23,7 @@ Phase 1 establishes the enterprise-grade foundation for the **"Portal for Academ
 ## Proposed Architecture & Directory Structure
 
 ```
-Skill Bridge India SIH 2026/
+SkillBridge India/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
