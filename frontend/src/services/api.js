@@ -554,6 +554,47 @@ export const apiService = {
   },
 
   // --------------------------------------------------------------------------
+  // Phase 5.5: RAG Knowledge Base & Retrieval APIs
+  // --------------------------------------------------------------------------
+  getRAGStatus: async () => {
+    const res = await apiClient.get('/ai/rag/status');
+    return res.data;
+  },
+
+  ingestRAGKnowledgeBase: async (filePath = null, forceReload = false) => {
+    const res = await apiClient.post('/ai/rag/ingest', {
+      file_path: filePath,
+      force_reload: forceReload,
+    });
+    return res.data;
+  },
+
+  retrieveRAGChunks: async (query, filters = {}, topK = 5) => {
+    const res = await apiClient.post('/ai/rag/retrieve', {
+      query,
+      top_k: topK,
+      role: filters.role || null,
+      content_type: filters.content_type || null,
+      topic: filters.topic || null,
+      difficulty: filters.difficulty || null,
+      score_threshold: filters.score_threshold || null,
+    });
+    return res.data;
+  },
+
+  queryRAGGrounded: async (query, filters = {}, history = []) => {
+    const res = await apiClient.post('/ai/rag/query', {
+      query,
+      role: filters.role || null,
+      content_type: filters.content_type || null,
+      topic: filters.topic || null,
+      difficulty: filters.difficulty || null,
+      conversation_history: history,
+    });
+    return res.data;
+  },
+
+  // --------------------------------------------------------------------------
   // Phase 6: Super Admin / Platform Governance APIs
   // --------------------------------------------------------------------------
   getAdminOverview: async () => {
@@ -610,6 +651,28 @@ export const apiService = {
   },
 
   // AI Interview Simulator Methods (Technical, HR, Custom)
+  uploadInterviewResume: async (file, onUploadProgress) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.post('/interviews/upload-resume', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress,
+    });
+    return res.data;
+  },
+
+  getInterviewResumeStatus: async () => {
+    const res = await apiClient.get('/interviews/resume-status');
+    return res.data;
+  },
+
+  removeInterviewResume: async () => {
+    const res = await apiClient.delete('/interviews/resume');
+    return res.data;
+  },
+
   startInterview: async (payload) => {
     const res = await apiClient.post('/interviews/start', payload);
     return res.data;

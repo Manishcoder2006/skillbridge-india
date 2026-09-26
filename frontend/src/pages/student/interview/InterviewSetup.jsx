@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Code,
   Users,
@@ -14,13 +14,20 @@ import {
   Layers,
   Cpu,
   Clock,
-  HelpCircle
+  HelpCircle,
+  UploadCloud,
+  Upload,
+  Trash2,
+  AlertCircle,
+  RefreshCw,
+  FileUp
 } from 'lucide-react';
 import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { Input } from '../../../components/common/Input';
 import { Select } from '../../../components/common/Select';
 import { Badge } from '../../../components/common/Badge';
+import { apiService } from '../../../services/api';
 
 export const InterviewSetup = ({
   initialMode = 'technical',
@@ -34,6 +41,40 @@ export const InterviewSetup = ({
   const [role, setRole] = useState('');
   const [experienceLevel, setExperienceLevel] = useState('intermediate');
   const [resumePersonalization, setResumePersonalization] = useState(true);
+  const [uploadedResume, setUploadedResume] = useState(() => {
+    if (studentResume?.data?.uploaded_file) {
+      return {
+        filename: studentResume.data.uploaded_file.filename,
+        file_type: studentResume.data.uploaded_file.file_type,
+        file_size: studentResume.data.uploaded_file.file_size,
+        file_size_formatted: studentResume.data.uploaded_file.file_size_formatted,
+        uploaded_at: studentResume.data.uploaded_file.uploaded_at,
+        skills: studentResume.data.skills || [],
+        projects_count: studentResume.data.projects?.length || 0,
+        experience_count: studentResume.data.experience?.length || 0,
+      };
+    }
+    if (studentResume?.data?.headline || (studentResume?.data?.skills && studentResume.data.skills.length > 0)) {
+      return {
+        filename: 'Verified Profile Resume.pdf',
+        file_type: 'pdf',
+        file_size_formatted: 'From Profile',
+        is_profile_resume: true,
+        skills: studentResume.data.skills || [],
+        projects_count: studentResume.data.projects?.length || 0,
+        experience_count: studentResume.data.experience?.length || 0,
+      };
+    }
+    return null;
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadSuccess, setUploadSuccess] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [validationError, setValidationError] = useState('');
+  const fileInputRef = useRef(null);
+
   const [skillsInput, setSkillsInput] = useState('');
   const [interviewFocus, setInterviewFocus] = useState('technical');
   const [numberOfQuestions, setNumberOfQuestions] = useState(5);
@@ -57,8 +98,118 @@ export const InterviewSetup = ({
     }
   }, [studentProfile, studentResume]);
 
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    setUploadError('');
+    setUploadSuccess('');
+    setValidationError('');
+
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+    if (!['.pdf', '.docx'].includes(ext)) {
+      setUploadError('Unsupported file format. Please upload a PDF or DOCX file.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File size exceeds the 5 MB limit. Please select a smaller file.');
+      return;
+    }
+
+    if (file.size === 0) {
+      setUploadError('Uploaded file is empty (0 bytes). Please select a valid document.');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setUploadProgress(25);
+
+      const result = await apiService.uploadInterviewResume(file, (progressEvent) => {
+        if (progressEvent && progressEvent.total) {
+          const percent = Math.round((progressEvent.loaded * 90) / progressEvent.total);
+          setUploadProgress(percent);
+        }
+      });
+
+      setUploadProgress(100);
+      setUploadedResume({
+        filename: result.filename,
+        file_type: result.file_type,
+        file_size: result.file_size,
+        file_size_formatted: result.file_size_formatted,
+        skills: result.extracted_skills || [],
+        projects_count: result.projects_count || 0,
+        experience_count: result.experience_count || 0,
+        raw_text_preview: result.raw_text_preview,
+        uploaded_at: new Date().toISOString(),
+      });
+
+      setUploadSuccess(`Resume "${result.filename}" (${result.file_size_formatted}) parsed successfully!`);
+
+      // Auto-append or update skills with extracted skills
+      if (result.extracted_skills && result.extracted_skills.length > 0) {
+        setSkillsInput((prev) => {
+          const existing = prev ? prev.split(',').map((s) => s.trim()).filter(Boolean) : [];
+          const combined = Array.from(new Set([...result.extracted_skills, ...existing]));
+          return combined.join(', ');
+        });
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message || 'Failed to upload and parse resume.';
+      setUploadError(msg);
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setUploadProgress(0), 1000);
+    }
+  };
+
+  const handleRemoveResume = async () => {
+    try {
+      await apiService.removeInterviewResume().catch(() => null);
+    } catch (e) {
+      // Ignore
+    }
+    setUploadedResume(null);
+    setUploadSuccess('');
+    setUploadError('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      handleFileUpload(files[0]);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    setValidationError('');
+
+    // Require valid resume before starting if personalization is enabled
+    if (resumePersonalization && !uploadedResume) {
+      setValidationError('Please upload your resume (PDF or DOCX) to generate personalized questions, or disable resume personalization.');
+      return;
+    }
+
     const skillsList = skillsInput
       .split(',')
       .map((s) => s.trim())
@@ -72,6 +223,7 @@ export const InterviewSetup = ({
       interview_focus: interviewFocus,
       number_of_questions: parseInt(numberOfQuestions, 10) || 5,
       resume_personalization: resumePersonalization,
+      uploaded_resume_text: uploadedResume?.raw_text_preview || undefined,
       job_description: jobDescription.trim() || undefined,
       custom_instructions: customInstructions.trim() || undefined,
     };
@@ -393,7 +545,10 @@ export const InterviewSetup = ({
               {/* Toggle Switch */}
               <button
                 type="button"
-                onClick={() => setResumePersonalization(!resumePersonalization)}
+                onClick={() => {
+                  setResumePersonalization(!resumePersonalization);
+                  setValidationError('');
+                }}
                 style={{
                   width: '46px',
                   height: '24px',
@@ -422,6 +577,286 @@ export const InterviewSetup = ({
                 />
               </button>
             </div>
+
+            {/* Resume Upload Section - Shown when Personalise with Resume is enabled */}
+            {resumePersonalization && (
+              <div
+                style={{
+                  padding: '1.25rem',
+                  background: isDragging ? 'var(--primary-50, #eff6ff)' : '#f8fafc',
+                  borderRadius: 'var(--radius-md)',
+                  border: isDragging
+                    ? '2px dashed var(--primary-600)'
+                    : validationError
+                    ? '1.5px solid var(--danger-500, #ef4444)'
+                    : '1.5px dashed #cbd5e1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem',
+                  transition: 'all 0.2s ease',
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                {/* Hidden native file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  style={{ display: 'none' }}
+                  id="interview-resume-upload-input"
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <UploadCloud size={18} color="var(--primary-600)" />
+                      Upload Your Resume
+                    </div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '0.2rem', lineHeight: '1.4' }}>
+                      Upload your resume to generate interview questions based on your skills, projects, education, and experience.
+                    </div>
+                  </div>
+                  {uploadedResume && (
+                    <Badge variant="success" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem' }}>
+                      <CheckCircle2 size={12} /> Active Resume
+                    </Badge>
+                  )}
+                </div>
+
+                {/* If Resume is uploaded, show Resume Card */}
+                {uploadedResume ? (
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.85rem 1rem',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '8px',
+                          background: uploadedResume.file_type === 'pdf' ? '#fee2e2' : '#e0e7ff',
+                          color: uploadedResume.file_type === 'pdf' ? '#dc2626' : '#4338ca',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: '0.75rem',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {uploadedResume.file_type?.toUpperCase() || 'DOC'}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {uploadedResume.filename}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.15rem' }}>
+                          <span>{uploadedResume.file_size_formatted}</span>
+                          <span>•</span>
+                          <span style={{ textTransform: 'uppercase' }}>{uploadedResume.file_type} Document</span>
+                          {uploadedResume.projects_count > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{uploadedResume.projects_count} Project{uploadedResume.projects_count > 1 ? 's' : ''} detected</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        style={{
+                          padding: '0.4rem 0.75rem',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #cbd5e1',
+                          background: '#ffffff',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                      >
+                        <RefreshCw size={13} /> Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveResume}
+                        disabled={isUploading}
+                        style={{
+                          padding: '0.4rem 0.6rem',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid #fee2e2',
+                          background: '#fff1f2',
+                          color: '#e11d48',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                        }}
+                        title="Remove resume"
+                      >
+                        <Trash2 size={13} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Drag and drop upload zone */
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '1.25rem 1rem',
+                      textAlign: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: '50%',
+                        background: isDragging ? 'var(--primary-100)' : '#f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '0.25rem',
+                      }}
+                    >
+                      <Upload size={22} color="var(--primary-600)" />
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                      Drag and drop your resume here or{' '}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primary-600)',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          textDecoration: 'underline',
+                          padding: 0,
+                        }}
+                      >
+                        Browse Files
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                      Supported formats: PDF, DOCX · Maximum size: 5 MB
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Progress Indicator */}
+                {isUploading && (
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                      <span>Uploading and parsing competencies...</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${uploadProgress}%`,
+                          height: '100%',
+                          background: 'var(--primary-600)',
+                          transition: 'width 0.3s ease',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {uploadSuccess && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      color: '#059669',
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.76rem',
+                    }}
+                  >
+                    <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
+                    <span>{uploadSuccess}</span>
+                  </div>
+                )}
+
+                {/* Error Message */}
+                {uploadError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.76rem',
+                    }}
+                  >
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    <span>{uploadError}</span>
+                  </div>
+                )}
+
+                {/* Validation Error Message */}
+                {validationError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      color: '#b91c1c',
+                      background: '#fff1f2',
+                      border: '1px solid #fda4af',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '0.76rem',
+                    }}
+                  >
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                    <span>{validationError}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 4. Experience Level Selection */}
             <div>

@@ -13,8 +13,24 @@ class InterviewStartRequest(BaseModel):
     interview_focus: Optional[str] = "technical"  # technical | hr | system_design | project_based | mixed
     number_of_questions: Optional[int] = 5  # 5 | 10 | 15
     resume_personalization: Optional[bool] = False
+    uploaded_resume_text: Optional[str] = None
     job_description: Optional[str] = None
     custom_instructions: Optional[str] = None
+
+
+class ResumeUploadResponse(BaseModel):
+    success: bool = True
+    filename: str
+    file_type: str
+    file_size: int
+    file_size_formatted: str
+    headline: Optional[str] = None
+    summary: Optional[str] = None
+    extracted_skills: List[str] = Field(default_factory=list)
+    projects_count: int = 0
+    experience_count: int = 0
+    raw_text_preview: str = ""
+    message: str = "Resume uploaded and analyzed successfully."
 
 
 class InterviewQuestion(BaseModel):

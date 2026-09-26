@@ -803,6 +803,8 @@ class StudentRepository:
                 "extracurricular_activities": [],
                 "coursework": [],
                 "links": {"github": "", "linkedin": "", "portfolio": ""},
+                "uploaded_file": None,
+                "raw_text": "",
                 "formatting": {
                     "template": "classic",
                     "font_family": "Inter, sans-serif",

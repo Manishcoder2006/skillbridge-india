@@ -18,9 +18,11 @@ import {
   GraduationCap,
   PlayCircle,
   FileText,
+  Database,
 } from 'lucide-react';
 
 import { AILearningTutor } from './learning/AILearningTutor';
+import { RAGKnowledgeExplorer } from '../../components/ai/RAGKnowledgeExplorer';
 import { Sparkles } from 'lucide-react';
 
 const DEFAULT_CURATED_RESOURCES = [
@@ -245,6 +247,29 @@ export const LearningSection = () => {
           <BookOpen size={16} />
           Curated Resources (NPTEL / SWAYAM)
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('rag_knowledge')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.65rem 1.25rem',
+            borderRadius: '10px',
+            border: 'none',
+            background: activeTab === 'rag_knowledge' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : '#f1f5f9',
+            color: activeTab === 'rag_knowledge' ? '#ffffff' : 'var(--text-secondary)',
+            fontWeight: 800,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: activeTab === 'rag_knowledge' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <Database size={16} color={activeTab === 'rag_knowledge' ? '#ffffff' : '#2563eb'} />
+          National Knowledge Base (RAG)
+        </button>
       </div>
 
       {/* TAB 1: AI MICRO-LEARNING TUTOR */}
@@ -402,6 +427,9 @@ export const LearningSection = () => {
           )}
         </div>
       )}
+
+      {/* TAB 3: NATIONAL KNOWLEDGE BASE (RAG) */}
+      {activeTab === 'rag_knowledge' && <RAGKnowledgeExplorer />}
     </div>
   );
 };

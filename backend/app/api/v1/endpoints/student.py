@@ -1,10 +1,13 @@
+from datetime import datetime, timezone
 import logging
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from app.core.security import require_roles, AuthenticatedUser
 from app.models.enums import UserRole
 from app.repositories.student_repository import student_repo
 from app.services.student_service import student_service
+from app.services.ai.resume_parser_service import resume_parser_service
+from app.schemas.interview import ResumeUploadResponse
 from app.schemas.student import (
     StudentDashboardSummaryResponse,
     StudentFullProfileResponse,
@@ -193,3 +196,54 @@ def update_student_resume(
     current_user: AuthenticatedUser = Depends(student_guard)
 ):
     return student_repo.update_student_resume(current_user.id, payload.model_dump())
+
+
+@router.post("/resume/upload", response_model=ResumeUploadResponse)
+async def upload_student_resume(
+    file: UploadFile = File(...),
+    current_user: AuthenticatedUser = Depends(student_guard)
+):
+    user_id = current_user.id
+    file_bytes = await file.read()
+    filename = file.filename or "resume.pdf"
+
+    parsed = resume_parser_service.parse_resume_bytes(file_bytes=file_bytes, filename=filename)
+
+    existing = student_repo.get_student_resume(user_id)
+    existing_data = existing.get("data", {}) if isinstance(existing, dict) else {}
+
+    merged_skills = list(dict.fromkeys(existing_data.get("skills", []) + parsed.get("skills", [])))
+
+    updated_resume_data = {
+        **existing_data,
+        "headline": parsed.get("headline") or existing_data.get("headline", ""),
+        "summary": parsed.get("summary") or existing_data.get("summary", ""),
+        "skills": merged_skills,
+        "projects": parsed.get("projects") or existing_data.get("projects", []),
+        "experience": parsed.get("experience") or existing_data.get("experience", []),
+        "raw_text": parsed.get("raw_text", ""),
+        "uploaded_file": {
+            "filename": parsed["filename"],
+            "file_type": parsed["file_type"],
+            "file_size": parsed["file_size"],
+            "file_size_formatted": parsed["file_size_formatted"],
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+    }
+    student_repo.update_student_resume(user_id, updated_resume_data)
+
+    return ResumeUploadResponse(
+        success=True,
+        filename=parsed["filename"],
+        file_type=parsed["file_type"],
+        file_size=parsed["file_size"],
+        file_size_formatted=parsed["file_size_formatted"],
+        headline=parsed["headline"],
+        summary=parsed["summary"],
+        extracted_skills=parsed["skills"],
+        projects_count=len(parsed["projects"]),
+        experience_count=len(parsed["experience"]),
+        raw_text_preview=parsed["raw_text"][:250],
+        message="Resume uploaded and analyzed successfully."
+    )
+

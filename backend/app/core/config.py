@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import AnyHttpUrl, field_validator, ValidationInfo, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
@@ -55,8 +55,7 @@ class Settings(BaseSettings):
     GROQ_DEFAULT_MODEL: str = "openai/gpt-oss-120b"
     AI_TIMEOUT_SECONDS: int = 15
     AI_SIMULATION_FALLBACK: bool = False
-    # Maximum number of interview questions per session. Adjustable via environment variable for flexibility.
-    INTERVIEW_MAX_QUESTIONS: int = Field(default=10, env="INTERVIEW_MAX_QUESTIONS")
+    INTERVIEW_MAX_QUESTIONS: int = Field(default=10, validation_alias="INTERVIEW_MAX_QUESTIONS")
     # Enforce that in production we must have a valid Gemini key (and optionally Groq key)
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
@@ -99,5 +98,17 @@ class Settings(BaseSettings):
     # ---- New Zero‑Cost Video Tutor Flags ----
     VIDEO_TUTOR_ENABLED: bool = True
     VIDEO_MAX_DURATION_SECONDS: int = 600
+
+    # ---- RAG & Qdrant Knowledge Base Configuration ----
+    QDRANT_URL: Optional[str] = None
+    QDRANT_API_KEY: Optional[str] = None
+    QDRANT_COLLECTION_NAME: str = "skillbridge_knowledge_base"
+    EMBEDDING_PROVIDER: str = "local"  # "local", "gemini", "openai", "fastembed"
+    EMBEDDING_MODEL_NAME: str = "deterministic-384"
+    EMBEDDING_DIMENSION: int = 384
+    RAG_CHUNK_SIZE: int = 800
+    RAG_CHUNK_OVERLAP: int = 100
+    RAG_SCORE_THRESHOLD: float = 0.15
+    KNOWLEDGE_BASE_DOC_PATH: str = "Skill_Bridge_India_RAG_Knowledge_Base (6).docx"
 
 settings = Settings()

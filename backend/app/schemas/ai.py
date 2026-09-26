@@ -215,3 +215,77 @@ class VideoTutorResponse(BaseModel):
     job_id: str = Field(..., description="Identifier of the video generation job")
     status: str = Field(..., description="Current job status, e.g., 'queued'")
     video_url: str | None = Field(None, description="URL to the generated video when status is 'completed'")
+
+# -------------------------------------------------------------------------------
+# 6. RAG Knowledge Base Ingestion & Grounded Retrieval Schemas
+# -------------------------------------------------------------------------------
+class RAGStatusResponse(BaseModel):
+    status: str
+    collection_name: str
+    is_remote: bool
+    cluster_url: str
+    embedding_provider: str
+    embedding_dimension: int
+    points_count: int
+    document_path: str
+
+class RAGIngestRequest(BaseModel):
+    file_path: Optional[str] = None
+    force_reload: bool = False
+
+class RAGIngestResponse(BaseModel):
+    success: bool
+    document_id: str
+    source_filename: str
+    collection_name: str
+    total_chunks_parsed: int
+    total_upserted_points: int
+    categories_breakdown: Dict[str, int]
+    embedding_provider: str
+    vector_dimension: int
+    is_remote_qdrant: bool
+
+class RAGRetrieveRequest(BaseModel):
+    query: str
+    top_k: int = 5
+    role: Optional[str] = None
+    content_type: Optional[str] = None
+    topic: Optional[str] = None
+    difficulty: Optional[str] = None
+    score_threshold: Optional[float] = None
+
+class RAGSourceItem(BaseModel):
+    chunk_id: str
+    section: str
+    subsection: Optional[str] = None
+    content_type: str
+    role: Optional[str] = None
+    topic: Optional[str] = None
+    difficulty: Optional[str] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    chunk_text: Optional[str] = None
+    score: float
+
+class RAGRetrieveResponse(BaseModel):
+    query: str
+    total_results: int
+    results: List[RAGSourceItem]
+
+class RAGGroundedQueryRequest(BaseModel):
+    query: str
+    role: Optional[str] = None
+    content_type: Optional[str] = None
+    topic: Optional[str] = None
+    difficulty: Optional[str] = None
+    conversation_history: Optional[List[Dict[str, str]]] = None
+
+class RAGGroundedQueryResponse(BaseModel):
+    query: str
+    answer: str
+    has_sufficient_evidence: bool
+    confidence_score: float
+    is_sample_answer: bool
+    key_takeaways: List[str] = Field(default_factory=list)
+    follow_up_suggestions: List[str] = Field(default_factory=list)
+    sources: List[Dict[str, Any]] = Field(default_factory=list)

@@ -25,7 +25,17 @@ from app.schemas.ai import (
     AIAssistantChatResponse,
     VideoTutorRequest,
     VideoTutorResponse,
+    RAGStatusResponse,
+    RAGIngestRequest,
+    RAGIngestResponse,
+    RAGRetrieveRequest,
+    RAGRetrieveResponse,
+    RAGSourceItem,
+    RAGGroundedQueryRequest,
+    RAGGroundedQueryResponse,
 )
+from app.services.ai.rag_service import rag_service
+from app.core.config import settings
 
 router = APIRouter(tags=["Multi-Model AI"])
 
@@ -252,4 +262,141 @@ async def chat_with_ai_assistant(
         role=role_str,
         message=payload.message,
         history=payload.conversation_history
+    )
+
+
+# -----------------------------------------------------------------------------
+# 5. RAG Knowledge Base Ingestion & Retrieval Endpoints
+# -----------------------------------------------------------------------------
+@router.get("/rag/status", response_model=RAGStatusResponse)
+def get_rag_knowledge_base_status():
+    """Returns RAG collection status, cluster connection, vector dimensions, and point count."""
+    info = rag_service.qdrant.get_collection_info(rag_service.KB_COLLECTION)
+    return RAGStatusResponse(
+        status="ready" if info.get("exists") else "uninitialized",
+        collection_name=rag_service.KB_COLLECTION,
+        is_remote=info.get("is_remote", False),
+        cluster_url=str(info.get("cluster_url", ":memory:")),
+        embedding_provider=settings.EMBEDDING_PROVIDER,
+        embedding_dimension=settings.EMBEDDING_DIMENSION,
+        points_count=info.get("points_count", 0),
+        document_path=settings.KNOWLEDGE_BASE_DOC_PATH
+    )
+
+
+@router.post("/rag/ingest", response_model=RAGIngestResponse)
+def trigger_rag_ingest(
+    payload: RAGIngestRequest = RAGIngestRequest(),
+    current_user: Any = Depends(require_roles([UserRole.ACADEMICIAN, UserRole.INSTITUTION_ADMIN, UserRole.SUPER_ADMIN]))
+):
+    """
+    Triggers idempotent ingestion of the SkillBridge India Knowledge Base DOCX document.
+    Parses sections, Q&A pairs, role profiles, and roadmaps, generating dense vectors.
+    """
+    res = rag_service.ingest_knowledge_base(
+        file_path=payload.file_path,
+        force_reload=payload.force_reload
+    )
+    return RAGIngestResponse(
+        success=res.get("success", False),
+        document_id=res.get("document_id", "unknown"),
+        source_filename=res.get("source_filename", ""),
+        collection_name=res.get("collection_name", rag_service.KB_COLLECTION),
+        total_chunks_parsed=res.get("total_chunks_parsed", 0),
+        total_upserted_points=res.get("total_upserted_points", 0),
+        categories_breakdown=res.get("categories_breakdown", {}),
+        embedding_provider=res.get("embedding_provider", settings.EMBEDDING_PROVIDER),
+        vector_dimension=res.get("vector_dimension", settings.EMBEDDING_DIMENSION),
+        is_remote_qdrant=res.get("is_remote_qdrant", False)
+    )
+
+
+@router.post("/rag/retrieve", response_model=RAGRetrieveResponse)
+def retrieve_rag_chunks(
+    payload: RAGRetrieveRequest,
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    Performs filtered semantic retrieval against the SkillBridge Knowledge Base.
+    Supports filtering by role, topic, content_type, and difficulty.
+    """
+    filters = {}
+    if payload.role:
+        filters["role"] = payload.role
+    if payload.content_type:
+        filters["content_type"] = payload.content_type
+    if payload.topic:
+        filters["topic"] = payload.topic
+    if payload.difficulty:
+        filters["difficulty"] = payload.difficulty
+
+    hits = rag_service.search_knowledge_base(
+        query=payload.query,
+        top_k=payload.top_k,
+        score_threshold=payload.score_threshold,
+        filters=filters if filters else None
+    )
+
+    results = [
+        RAGSourceItem(
+            chunk_id=h.get("chunk_id", ""),
+            section=h.get("section", ""),
+            subsection=h.get("subsection"),
+            content_type=h.get("content_type", "knowledge"),
+            role=h.get("role"),
+            topic=h.get("topic"),
+            difficulty=h.get("difficulty"),
+            question=h.get("question"),
+            answer=h.get("answer"),
+            chunk_text=h.get("chunk_text"),
+            score=h.get("score", 0.0)
+        )
+        for h in hits
+    ]
+
+    return RAGRetrieveResponse(
+        query=payload.query,
+        total_results=len(results),
+        results=results
+    )
+
+
+@router.post("/rag/query", response_model=RAGGroundedQueryResponse)
+async def query_rag_grounded_answer(
+    payload: RAGGroundedQueryRequest,
+    current_user: Any = Depends(get_current_user)
+):
+    """
+    Retrieves evidence from the SkillBridge Knowledge Base and generates
+    a strictly grounded answer with source citations and confidence scores.
+    """
+    role_obj = getattr(current_user, "role", "student")
+    role_str = getattr(role_obj, "value", str(role_obj)).lower().replace("userrole.", "")
+
+    filters = {}
+    if payload.role:
+        filters["role"] = payload.role
+    if payload.content_type:
+        filters["content_type"] = payload.content_type
+    if payload.topic:
+        filters["topic"] = payload.topic
+    if payload.difficulty:
+        filters["difficulty"] = payload.difficulty
+
+    res = await rag_service.answer_grounded_query(
+        query=payload.query,
+        filters=filters if filters else None,
+        user_role=role_str,
+        conversation_history=payload.conversation_history
+    )
+
+    return RAGGroundedQueryResponse(
+        query=res.get("query", payload.query),
+        answer=res.get("answer", ""),
+        has_sufficient_evidence=res.get("has_sufficient_evidence", False),
+        confidence_score=res.get("confidence_score", 0.0),
+        is_sample_answer=res.get("is_sample_answer", False),
+        key_takeaways=res.get("key_takeaways", []),
+        follow_up_suggestions=res.get("follow_up_suggestions", []),
+        sources=res.get("sources", [])
     )

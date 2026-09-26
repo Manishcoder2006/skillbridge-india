@@ -3,38 +3,46 @@ import re
 import uuid
 import logging
 from typing import Dict, Any, List, Optional
+from pathlib import Path
 from qdrant_client import QdrantClient, models
+
+from app.core.config import settings
+from app.services.ai.embedding_service import get_embedding_provider, BaseEmbeddingProvider
+from app.services.ai.qdrant_manager import qdrant_manager, QdrantManager
+from app.services.ai.rag_document_parser import rag_document_parser, RAGDocumentParser
 
 logger = logging.getLogger("skillbridge.ai.rag")
 
+
 class RAGService:
     """
-    Dedicated Qdrant-backed RAG Vector Retrieval Service for SkillBridge India.
-    Supports query normalization, semantic dense vector search, metadata filtering,
-    relevance guarding, and development logging.
+    Dedicated Vector Retrieval & Ingestion Service for SkillBridge India.
+    Integrates DOCX semantic chunking, Qdrant vector retrieval, metadata filtering,
+    keyword-aware reranking, and grounded response generation.
     """
 
-    VECTOR_DIM = 384
     LEARNING_COLLECTION = "learning_resources"
     INTERVIEW_COLLECTION = "interview_competencies"
+    KB_COLLECTION = settings.QDRANT_COLLECTION_NAME or "skillbridge_knowledge_base"
 
     def __init__(self):
-        # In-memory Qdrant client for zero-latency, highly reliable vector indexing
-        self.client = QdrantClient(":memory:")
+        self.qdrant: QdrantManager = qdrant_manager
+        self.client: QdrantClient = self.qdrant.client
+        self.embedding_provider: BaseEmbeddingProvider = get_embedding_provider()
+        self.vector_dim = self.embedding_provider.dimension
+        self.parser: RAGDocumentParser = rag_document_parser
+
         self._init_collections()
         self._seed_default_knowledge_base()
+        self._auto_ingest_provided_kb()
 
     def _init_collections(self):
         """Initializes collections in Qdrant with Cosine distance."""
-        for coll_name in [self.LEARNING_COLLECTION, self.INTERVIEW_COLLECTION]:
-            if not self.client.collection_exists(coll_name):
-                self.client.create_collection(
-                    collection_name=coll_name,
-                    vectors_config=models.VectorParams(
-                        size=self.VECTOR_DIM,
-                        distance=models.Distance.COSINE
-                    )
-                )
+        for coll_name in [self.LEARNING_COLLECTION, self.INTERVIEW_COLLECTION, self.KB_COLLECTION]:
+            try:
+                self.qdrant.ensure_collection(collection_name=coll_name, vector_dim=self.vector_dim)
+            except Exception as e:
+                logger.warning(f"[RAG] Collection '{coll_name}' init note: {e}")
 
     def normalize_query(self, query: str) -> str:
         """
@@ -44,7 +52,6 @@ class RAGService:
         if not query:
             return ""
         q = query.strip()
-        # Remove common conversational prefixes
         prefixes = [
             r"^i want to learn\s+",
             r"^i would like to learn\s+",
@@ -57,51 +64,280 @@ class RAGService:
             r"^can you explain\s+",
             r"^what is\s+",
             r"^tell me about\s+",
+            r"^give me\s+",
+            r"^show me\s+",
         ]
         for p in prefixes:
             q = re.sub(p, "", q, flags=re.IGNORECASE)
-        # Clean extra whitespace
         q = re.sub(r"\s+", " ", q).strip()
         return q or query.strip()
 
     def _generate_dense_vector(self, text: str) -> List[float]:
-        """
-        Generates a 384-dimensional dense semantic embedding vector.
-        Uses character n-gram projection with frequency dampening and L2 normalization
-        to provide deterministic, high-quality cosine similarity without external network bottlenecks.
-        """
-        clean_text = text.lower().strip()
-        vec = [0.0] * self.VECTOR_DIM
+        """Generates dense semantic embedding vector using configured provider."""
+        return self.embedding_provider.embed_text(text)
 
-        if not clean_text:
-            vec[0] = 1.0
-            return vec
+    def _auto_ingest_provided_kb(self):
+        """Automatically ingests the provided knowledge base DOCX file if available."""
+        doc_filename = settings.KNOWLEDGE_BASE_DOC_PATH
+        possible_paths = [
+            Path(doc_filename),
+            Path("..") / doc_filename,
+            Path("backend") / doc_filename,
+            Path("Skill_Bridge_India_RAG_Knowledge_Base (6).docx"),
+            Path("..") / "Skill_Bridge_India_RAG_Knowledge_Base (6).docx",
+        ]
+        target_path = None
+        for p in possible_paths:
+            if p.exists():
+                target_path = p
+                break
 
-        words = re.findall(r"\b\w+\b", clean_text)
-        for w in words:
-            # Word-level hash projection
-            h = hash(w) % self.VECTOR_DIM
-            vec[h] += 1.5
-
-            # 3-gram sub-tokens
-            for i in range(len(w) - 2):
-                tri = w[i:i+3]
-                th = hash(tri) % self.VECTOR_DIM
-                vec[th] += 0.8
-
-        # L2 Normalize
-        magnitude = math.sqrt(sum(x * x for x in vec))
-        if magnitude > 0:
-            vec = [x / magnitude for x in vec]
+        if target_path:
+            logger.info(f"[RAG] Auto-ingesting Knowledge Base DOCX from: {target_path}")
+            try:
+                self.ingest_knowledge_base(str(target_path), force_reload=False)
+            except Exception as e:
+                logger.error(f"[RAG] Auto-ingestion failed: {e}")
         else:
-            vec[0] = 1.0
-        return vec
+            logger.info(f"[RAG] Knowledge Base doc '{doc_filename}' not found at local paths. Skipping auto-ingest.")
 
+    def ingest_knowledge_base(
+        self,
+        file_path: Optional[str] = None,
+        force_reload: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Reads, parses, chunks, and batch-upserts the DOCX Knowledge Base into Qdrant.
+        Idempotent: Uses stable UUIDs to avoid duplicate vectors.
+        """
+        path_str = file_path or settings.KNOWLEDGE_BASE_DOC_PATH
+        chunks = self.parser.parse_docx(path_str)
+
+        if not chunks:
+            return {
+                "success": False,
+                "message": "No chunks extracted from document",
+                "chunks_count": 0,
+                "collection": self.KB_COLLECTION
+            }
+
+        # Check existing collection state
+        info = self.qdrant.get_collection_info(self.KB_COLLECTION)
+        existing_points = info.get("points_count", 0)
+
+        # Batch upsert into Qdrant
+        total_upserted = self.qdrant.upsert_chunks(
+            chunks=chunks,
+            embedding_provider=self.embedding_provider,
+            collection_name=self.KB_COLLECTION
+        )
+
+        categories: Dict[str, int] = {}
+        for c in chunks:
+            sec = c.get("section", "Other")
+            categories[sec] = categories.get(sec, 0) + 1
+
+        logger.info(f"[RAG] Knowledge base ingested: {total_upserted} chunks into '{self.KB_COLLECTION}'.")
+
+        return {
+            "success": True,
+            "document_id": chunks[0].get("document_id") if chunks else "unknown",
+            "source_filename": chunks[0].get("source_filename") if chunks else path_str,
+            "collection_name": self.KB_COLLECTION,
+            "total_chunks_parsed": len(chunks),
+            "total_upserted_points": total_upserted,
+            "categories_breakdown": categories,
+            "embedding_provider": self.embedding_provider.model_name,
+            "vector_dimension": self.vector_dim,
+            "is_remote_qdrant": self.qdrant.is_remote()
+        }
+
+    def search_knowledge_base(
+        self,
+        query: str,
+        top_k: int = 5,
+        score_threshold: Optional[float] = None,
+        filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Performs semantic vector retrieval against the unified Knowledge Base collection.
+        Includes keyword term boosting for technical interview questions (BFS, DFS, Java, React, SQL, etc.).
+        """
+        threshold = score_threshold if score_threshold is not None else settings.RAG_SCORE_THRESHOLD
+        normalized = self.normalize_query(query)
+        query_vec = self._generate_dense_vector(f"{query} {normalized}")
+
+        logger.info(f"[RAG] Query: '{query}' | Normalized: '{normalized}' | Filters: {filters}")
+
+        # Vector search in Qdrant with filters (fetch wider candidate pool for hybrid technical reranking)
+        candidate_limit = max(top_k * 10, 50)
+        raw_hits = self.qdrant.search(
+            query_vector=query_vec,
+            top_k=candidate_limit,
+            score_threshold=0.01,
+            filters=filters,
+            collection_name=self.KB_COLLECTION
+        )
+
+        # Hybrid Technical Keyword Reranking with Stopword Suppression
+        stopwords = {
+            "give", "me", "show", "tell", "what", "how", "why", "the", "a", "an",
+            "is", "are", "for", "to", "in", "of", "and", "or", "questions", "question",
+            "interview", "with", "vs", "about", "some", "can", "you", "please", "i", "need"
+        }
+        query_terms = (set(re.findall(r"\b[a-zA-Z0-9_+#.-]+\b", query.lower())) |
+                       set(re.findall(r"\b[a-zA-Z0-9_+#.-]+\b", normalized.lower()))) - stopwords
+
+        scored_results = []
+        for hit in raw_hits:
+            base_score = hit["score"]
+            question = (hit.get("question") or "").lower()
+            section = (hit.get("section") or "").lower()
+            answer = (hit.get("answer") or "").lower()
+            topic = (hit.get("topic") or "").lower()
+            role = (hit.get("role") or "").lower()
+            combined_text = f"{section} {topic} {role} {question} {answer}"
+
+            # Exact technical domain match boosts
+            boost = 0.0
+            for term in query_terms:
+                if len(term) < 2:
+                    continue
+                # Section / Role / Topic direct match
+                if term in section or term in topic or term in role:
+                    boost += 0.40
+                elif f" {term} " in f" {question} ":
+                    boost += 0.35
+                elif f" {term} " in f" {combined_text} ":
+                    boost += 0.15
+
+            final_score = round(min(base_score + boost, 1.0), 4)
+
+            if final_score >= threshold or len(scored_results) < 2:
+                hit_copy = dict(hit)
+                hit_copy["score"] = final_score
+                scored_results.append(hit_copy)
+
+        # Sort descending by final score
+        scored_results.sort(key=lambda x: x["score"], reverse=True)
+        final_results = scored_results[:top_k]
+
+        logger.info(f"[RAG] Retrieved {len(final_results)} relevant chunks for '{query}'.")
+        return final_results
+
+    async def answer_grounded_query(
+        self,
+        query: str,
+        filters: Optional[Dict[str, Any]] = None,
+        user_role: str = "student",
+        conversation_history: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Executes grounded retrieval-augmented generation.
+        Returns strictly evidence-grounded answer with source citations and confidence.
+        States clearly when evidence is insufficient instead of hallucinating.
+        """
+        from app.services.ai.gemini_service import gemini_service
+        from app.services.ai.groq_service import groq_service
+
+        retrieved_sources = self.search_knowledge_base(
+            query=query,
+            top_k=4,
+            filters=filters
+        )
+
+        if not retrieved_sources:
+            return {
+                "answer": (
+                    "The SkillBridge India knowledge base does not contain sufficient verified evidence "
+                    "to answer this specific question. Please consult official curriculum guides, university "
+                    "placement notices, or request faculty assistance."
+                ),
+                "has_sufficient_evidence": False,
+                "confidence_score": 0.0,
+                "sources": [],
+                "suggested_actions": ["Search broader topics", "Ask Academic Advisor", "Check Learning Dashboard"]
+            }
+
+        # Format retrieved evidence
+        evidence_blocks = []
+        for i, src in enumerate(retrieved_sources, 1):
+            q_part = f"Question: {src.get('question')}\n" if src.get('question') else ""
+            a_part = f"Answer/Content: {src.get('answer')}\n" if src.get('answer') else f"Content: {src.get('chunk_text')}\n"
+            evidence_blocks.append(
+                f"[Source {i} | Section: {src.get('section')} | Topic: {src.get('topic')}]\n"
+                f"{q_part}{a_part}"
+            )
+        evidence_text = "\n---\n".join(evidence_blocks)
+
+        prompt = f"""You are the SkillBridge India Knowledge Base AI Assistant.
+A user with role '{user_role.upper()}' asked: "{query}"
+
+RETRIEVED KNOWLEDGE BASE EVIDENCE:
+{evidence_text}
+
+MANDATORY GROUNDED GENERATION RULES:
+1. Base your answer EXCLUSIVELY on the provided evidence above. Do NOT invent facts or external statistics.
+2. If the user asks about interview answers, clarify that the sample answer is an illustrative framework (e.g. STAR method) and that the candidate must adapt it with their own authentic project experiences.
+3. If the evidence does not contain sufficient information to answer the question completely, clearly state: "The official knowledge base does not provide further details on this aspect."
+4. Structure the response clearly with concise bullet points where appropriate.
+5. Provide a professional, encouraging tone suitable for national placement and internship preparation.
+
+Return JSON format:
+{{
+  "answer": "<direct, grounded answer with clear explanations>",
+  "is_sample_answer": <true if question is an interview Q&A sample, false otherwise>,
+  "confidence_score": <float between 0.0 and 1.0 based on evidence match quality>,
+  "key_takeaways": ["<bullet 1>", "<bullet 2>", "<bullet 3>"],
+  "follow_up_suggestions": ["<suggestion 1>", "<suggestion 2>"]
+}}"""
+
+        try:
+            parsed, latency, is_fallback = await gemini_service.generate_structured_json(prompt=prompt)
+        except Exception:
+            try:
+                parsed, latency, is_fallback = await groq_service.generate_structured_json(prompt=prompt)
+            except Exception:
+                # Deterministic fallback directly synthesized from top retrieved chunk
+                top = retrieved_sources[0]
+                q_text = top.get("question") or query
+                a_text = top.get("answer") or top.get("chunk_text") or ""
+                parsed = {
+                    "answer": f"According to the SkillBridge India Knowledge Base ({top.get('section')}):\n\n{a_text}",
+                    "is_sample_answer": top.get("is_qa", False),
+                    "confidence_score": top.get("score", 0.85),
+                    "key_takeaways": [f"Section: {top.get('section')}", f"Topic: {top.get('topic')}"],
+                    "follow_up_suggestions": ["Review related interview questions", "Explore learning roadmap"]
+                }
+
+        return {
+            "query": query,
+            "answer": parsed.get("answer", ""),
+            "has_sufficient_evidence": True,
+            "confidence_score": parsed.get("confidence_score", 0.90),
+            "is_sample_answer": parsed.get("is_sample_answer", False),
+            "key_takeaways": parsed.get("key_takeaways", []),
+            "follow_up_suggestions": parsed.get("follow_up_suggestions", []),
+            "sources": [
+                {
+                    "chunk_id": s.get("chunk_id"),
+                    "section": s.get("section"),
+                    "topic": s.get("topic"),
+                    "role": s.get("role"),
+                    "content_type": s.get("content_type"),
+                    "score": s.get("score"),
+                    "question": s.get("question")
+                }
+                for s in retrieved_sources
+            ]
+        }
+
+    # --------------------------------------------------------------------------
+    # Backward Compatibility Methods for Existing Subsystems
+    # --------------------------------------------------------------------------
     def _seed_default_knowledge_base(self):
         """Pre-seeds canonical knowledge base resources and interview competencies."""
-        # 1. Learning Resources across distinct domains (English, Python, React, Databases, etc.)
         learning_docs = [
-            # English & Communication Domain
             {
                 "id": "eng-1",
                 "title": "English Communication & Spoken Fluency Masterclass",
@@ -154,8 +390,6 @@ class RAGService:
                 "content": "Intonation, word stress, phonetic symbols, overcoming mother-tongue influence, and daily spoken English conversational drills.",
                 "keywords": ["english", "spoken english", "phonetics", "accent", "pronunciation", "speaking", "conversation"]
             },
-
-            # Python Domain
             {
                 "id": "py-1",
                 "title": "Python for Algorithmic Problem Solving & Data Structures",
@@ -182,8 +416,6 @@ class RAGService:
                 "content": "Building asynchronous REST APIs with Python, FastAPI, Pydantic, dependency injection, and non-blocking event loops.",
                 "keywords": ["python", "fastapi", "backend", "api", "async", "pydantic", "rest"]
             },
-
-            # React / Frontend Domain
             {
                 "id": "react-1",
                 "title": "Modern React 18 & Frontend State Architecture",
@@ -210,8 +442,6 @@ class RAGService:
                 "content": "Modern CSS layouts, Flexbox alignment, CSS Grid two-dimensional layouts, media queries, and responsive web design standards.",
                 "keywords": ["css", "html", "flexbox", "grid", "frontend", "responsive", "web design"]
             },
-
-            # Database Domain
             {
                 "id": "db-1",
                 "title": "Database Modeling & PostgreSQL Row Level Security",
@@ -225,8 +455,6 @@ class RAGService:
                 "content": "Relational schema design, B-Tree and Hash indexing, query optimization, ACID transactions, and Row-Level Security policies in PostgreSQL.",
                 "keywords": ["database", "sql", "postgresql", "indexing", "acid", "query optimization", "rls"]
             },
-
-            # Cloud / DevOps Domain
             {
                 "id": "devops-1",
                 "title": "Cloud Infrastructure & Docker Containerization",
@@ -259,9 +487,7 @@ class RAGService:
             points=points
         )
 
-        # 2. Interview Competency Chunks
         interview_competencies = [
-            # Python Developer
             {
                 "id": "inv-comp-py-1",
                 "role": "Python Developer",
@@ -286,8 +512,6 @@ class RAGService:
                 "content": "Asyncio event loop architecture, coroutines, non-blocking I/O, ASGI frameworks like FastAPI compared to WSGI like Django/Flask.",
                 "keywords": ["python", "asyncio", "fastapi", "asgi", "event loop", "backend", "concurrency"]
             },
-
-            # Frontend Developer
             {
                 "id": "inv-comp-fe-1",
                 "role": "Frontend Developer",
@@ -304,8 +528,6 @@ class RAGService:
                 "content": "Client-side state (Context, Redux, Zustand) vs Server-side caching (React Query / SWR), Core Web Vitals (LCP, FID/INP, CLS) optimization, code-splitting.",
                 "keywords": ["frontend", "react", "state management", "core web vitals", "performance", "web"]
             },
-
-            # HR / Behavioral
             {
                 "id": "inv-comp-hr-1",
                 "role": "HR Interview",
@@ -340,7 +562,6 @@ class RAGService:
             collection_name=self.INTERVIEW_COLLECTION,
             points=inv_points
         )
-        logger.info("[RAG] Seeded default Qdrant collections: learning_resources & interview_competencies.")
 
     def sync_faculty_resources(self, resources: List[Dict[str, Any]]):
         """Dynamically ingests Faculty-created resources into Qdrant collection."""
@@ -379,7 +600,6 @@ class RAGService:
             collection_name=self.LEARNING_COLLECTION,
             points=points
         )
-        logger.info(f"[RAG] Ingested {len(points)} Faculty learning resources into Qdrant.")
 
     def search_learning_resources(
         self,
@@ -387,31 +607,24 @@ class RAGService:
         top_k: int = 4,
         score_threshold: float = 0.20
     ) -> List[Dict[str, Any]]:
-        """
-        Retrieves top relevant learning resources strictly aligned with the student's query.
-        Includes query normalization, Qdrant vector similarity, and relevance filtering.
-        """
+        """Retrieves top relevant learning resources strictly aligned with student's query."""
         normalized = self.normalize_query(query)
         query_vec = self._generate_dense_vector(normalized)
-
-        logger.info(f"[RAG] Received Learning Query: '{query}' | Normalized: '{normalized}'")
 
         try:
             hits = self.client.query_points(
                 collection_name=self.LEARNING_COLLECTION,
                 query=query_vec,
-                limit=top_k * 2,  # Fetch wider candidate pool for strict relevance filtering
+                limit=top_k * 2,
             ).points
         except Exception as e:
             logger.error(f"[RAG] Qdrant search error: {e}")
             return []
 
-        # Domain keywords detection for relevance filtering
         norm_lower = normalized.lower()
         is_english = any(w in norm_lower for w in ["english", "grammar", "speak", "pronunci", "vocab", "communicat"])
         is_python = any(w in norm_lower for w in ["python", "django", "fastapi", "asyncio", "numpy", "pandas"])
         is_react = any(w in norm_lower for w in ["react", "frontend", "web", "html", "css", "jsx", "javascript", "ui"])
-        is_db = any(w in norm_lower for w in ["database", "sql", "postgres", "mysql", "mongodb", "query"])
 
         filtered = []
         for hit in hits:
@@ -422,16 +635,12 @@ class RAGService:
             skill_tag = p.get("skill_tag", "").lower()
             combined_doc_text = f"{title} {content} {skill_tag}"
 
-            # Strict domain gate
-            if is_english:
-                if not any(w in combined_doc_text for w in ["english", "grammar", "speak", "vocabulary", "communication", "pronunciation"]):
-                    continue  # REJECT non-English chunk
-            elif is_python:
-                if not any(w in combined_doc_text for w in ["python", "fastapi", "backend", "algorithm", "dsa"]):
-                    continue
-            elif is_react:
-                if not any(w in combined_doc_text for w in ["react", "frontend", "javascript", "web", "css", "html"]):
-                    continue
+            if is_english and not any(w in combined_doc_text for w in ["english", "grammar", "speak", "vocabulary", "communication", "pronunciation"]):
+                continue
+            elif is_python and not any(w in combined_doc_text for w in ["python", "fastapi", "backend", "algorithm", "dsa"]):
+                continue
+            elif is_react and not any(w in combined_doc_text for w in ["react", "frontend", "javascript", "web", "css", "html"]):
+                continue
 
             if score >= score_threshold or len(filtered) < 2:
                 filtered.append({
@@ -450,10 +659,6 @@ class RAGService:
             if len(filtered) >= top_k:
                 break
 
-        logger.info(f"[RAG] Successfully retrieved {len(filtered)} chunks for query: '{query}'")
-        for idx, doc in enumerate(filtered):
-            logger.info(f"[RAG] Doc #{idx+1}: {doc['title']} ({doc['skill_tag']}) score={doc['score']}")
-
         return filtered
 
     def search_interview_competencies(
@@ -463,15 +668,11 @@ class RAGService:
         interview_type: str = "technical",
         top_k: int = 3
     ) -> List[Dict[str, Any]]:
-        """
-        Retrieves relevant interview competency chunks from Qdrant based on role and skills.
-        """
+        """Retrieves relevant interview competency chunks from Qdrant based on role and skills."""
         skills_str = " ".join(skills or [])
         query_text = f"{role} {skills_str} {interview_type}"
         normalized = self.normalize_query(query_text)
         query_vec = self._generate_dense_vector(normalized)
-
-        logger.info(f"[RAG] Searching Interview Competencies: Role='{role}', Skills='{skills_str}', Type='{interview_type}'")
 
         try:
             hits = self.client.query_points(
@@ -511,10 +712,7 @@ class RAGService:
             if len(results) >= top_k:
                 break
 
-        logger.info(f"[RAG] Retrieved {len(results)} interview competencies for role '{role}'")
-        for idx, comp in enumerate(results):
-            logger.info(f"[RAG] Competency #{idx+1}: {comp.get('role')} - {comp.get('category')} score={comp.get('score')}")
-
         return results
+
 
 rag_service = RAGService()

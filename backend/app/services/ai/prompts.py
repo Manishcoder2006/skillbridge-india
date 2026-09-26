@@ -314,6 +314,7 @@ MANDATORY RULES:
 4. If role is "HR Interview", questions MUST focus on behavioral STAR scenarios, communication, ethics, teamwork.
 5. Every generated question MUST be dynamically formulated (avoid repeating identical static question text across sessions).
 6. For each question, provide 3 to 5 concrete 'expected_key_points' that an ideal answer MUST address.
+7. RESUME PERSONALIZATION: When Candidate Verified Resume Context is provided, you MUST formulate questions directly inquiring into the candidate's actual projects, technologies, and experience mentioned in the resume (e.g. asking them to explain the architecture, trade-offs, or challenges of a specific project they listed). DO NOT invent fictitious projects or skills.
 
 Respond in strict JSON with the following structure:
 {{
