@@ -1,3 +1,14 @@
+import os
+import sys
+from pathlib import Path
+
+# Ensure backend and root directories are on sys.path regardless of execution context
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_ROOT_DIR = _BACKEND_DIR.parent
+for _dir_path in (str(_BACKEND_DIR), str(_ROOT_DIR)):
+    if _dir_path not in sys.path:
+        sys.path.insert(0, _dir_path)
+
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -85,4 +96,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    reload = os.environ.get("ENVIRONMENT", "development").lower() not in ("production", "prod")
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload)

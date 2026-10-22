@@ -56,37 +56,45 @@ class Settings(BaseSettings):
     AI_TIMEOUT_SECONDS: int = 15
     AI_SIMULATION_FALLBACK: bool = False
     INTERVIEW_MAX_QUESTIONS: int = Field(default=10, validation_alias="INTERVIEW_MAX_QUESTIONS")
-    # Enforce that in production we must have a valid Gemini key (and optionally Groq key)
+    # Environment & Key Validation (Resilient for cloud deployments)
     @field_validator("ENVIRONMENT", mode="before")
     @classmethod
     def validate_environment(cls, v: str, info) -> str:
-        # Accept 'development' or 'production'
-        if v not in ("development", "production"):
-            raise ValueError("ENVIRONMENT must be 'development' or 'production'")
+        if isinstance(v, str):
+            v_norm = v.strip().lower()
+            if v_norm in ("prod", "production"):
+                return "production"
+            if v_norm in ("dev", "development", "local"):
+                return "development"
+            if v_norm in ("staging", "test", "testing"):
+                return v_norm
         return v
+
     @field_validator("GEMINI_API_KEY", mode="before")
     @classmethod
     def validate_gemini_key(cls, v: str, info) -> str:
-        # info contains the model data during validation
+        import logging
+        cfg_logger = logging.getLogger("skillbridge.config")
         env = info.data.get("ENVIRONMENT", "development")
-        if env == "production" and (not v or v.startswith("your-")):
-            raise ValueError("GEMINI_API_KEY must be set for production")
-        return v
+        if env in ("production", "prod") and (not v or v.startswith("your-")):
+            cfg_logger.warning("GEMINI_API_KEY is not set or placeholder in production. AI features will require a valid key.")
+        return v or ""
+
     @field_validator("GROQ_API_KEY", mode="before")
     @classmethod
     def validate_groq_key(cls, v: str, info) -> str:
+        import logging
+        cfg_logger = logging.getLogger("skillbridge.config")
         env = info.data.get("ENVIRONMENT", "development")
-        # Groq is optional but if provided in production must be valid
-        if env == "production" and v and v.startswith("your-"):
-            raise ValueError("GROQ_API_KEY is invalid for production")
-        return v
+        if env in ("production", "prod") and v and v.startswith("your-"):
+            cfg_logger.warning("GROQ_API_KEY is a placeholder in production.")
+        return v or ""
 
     @field_validator("AI_SIMULATION_FALLBACK", mode="before")
     @classmethod
     def enforce_fallback_prod(cls, v: bool, info: ValidationInfo) -> bool:
-        # In production, AI_SIMULATION_FALLBACK must be disabled
         env = info.data.get("ENVIRONMENT", "development")
-        if env == "production":
+        if env in ("production", "prod"):
             return False
         return v
 

@@ -5,8 +5,15 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
-import pyttsx3
-from PIL import Image, ImageDraw, ImageFont
+try:
+    import pyttsx3
+except Exception:
+    pyttsx3 = None
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except Exception:
+    Image, ImageDraw, ImageFont = None, None, None
 
 from fastapi import HTTPException
 
@@ -22,6 +29,8 @@ def _binary_exists(name: str) -> bool:
 
 # Render a slide (1280x720) using Pillow with dark theme
 def _render_slide(title: str, bullets: List[str]) -> Path:
+    if Image is None or ImageDraw is None:
+        raise HTTPException(status_code=503, detail="Pillow library is not available on server")
     width, height = 1280, 720
     img = Image.new("RGB", (width, height), color="#1e1e1e")
     draw = ImageDraw.Draw(img)
@@ -43,6 +52,8 @@ def _render_slide(title: str, bullets: List[str]) -> Path:
 
 # Synthesize narration using pyttsx3 (preferring espeak voice)
 def _synthesize_text(text: str, job_id: str) -> Path:
+    if pyttsx3 is None:
+        raise HTTPException(status_code=503, detail="Text-to-speech engine (pyttsx3) is not available on server")
     engine = pyttsx3.init()
     for v in engine.getProperty('voices'):
         if 'espeak' in v.id.lower():
